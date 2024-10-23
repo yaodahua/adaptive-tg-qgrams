@@ -1,0 +1,90 @@
+VM_CPUS = 10
+VM_MEMORY = 14336
+
+Vagrant.configure('2') do |config|
+    $script = <<-SHELL
+
+        #!/bin/bash
+
+        apt-get update
+        apt-get upgrade -y
+        apt-get install -y ca-certificates curl wget
+
+        # Install Miniconda
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /home/vagrant/miniconda.sh
+        bash /home/vagrant/miniconda.sh -b -p /home/vagrant/miniconda3
+        rm -rf /home/vagrant/miniconda.sh
+
+        export PATH=/home/vagrant/miniconda3/bin:$PATH
+
+        conda --version
+        conda create -n webtestgen python=3.8 -y
+
+        __conda_setup="$('/home/vagrant/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+        if [ $? -eq 0 ]; then
+            eval "$__conda_setup"
+        else
+            if [ -f "/home/vagrant/miniconda3/etc/profile.d/conda.sh" ]; then
+                . "/home/vagrant/miniconda3/etc/profile.d/conda.sh"
+            else
+                export PATH="/home/vagrant/miniconda3/bin:$PATH"
+            fi
+        fi
+        unset __conda_setup
+
+        cat << 'EOF' >> /home/vagrant/.bashrc
+__conda_setup="$('/home/vagrant/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/vagrant/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/vagrant/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/vagrant/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+EOF
+        conda activate webtestgen
+        python --version
+        echo 'conda activate webtestgen' >> /home/vagrant/.bashrc
+
+        # Install Poetry
+        export POETRY_HOME="/home/vagrant/.local"
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo 'export PATH="/home/vagrant/.local/bin:$PATH"' >> /home/vagrant/.bashrc
+        export PATH="$POETRY_HOME/bin:$PATH"
+        conda activate webtestgen
+        cd /home/vagrant/webtestgen
+        poetry install
+
+        cd /tmp
+
+        # Install Docker
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+        echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+            $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+            tee /etc/apt/sources.list.d/docker.list > /dev/null
+        apt-get update
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        usermod -aG docker vagrant
+
+        cd /home/vagrant/webtestgen
+        docker build -t webtestexec:latest .
+
+        docker run --rm --mount type=bind,source="$(pwd)/apps",target=/home/apps --name runtime webtestexec:latest bash -c 'for app in $(ls /home/apps); do cd /home/apps/$app; mvn clean compile; done'
+
+    SHELL
+
+    config.vm.provider 'virtualbox' do |v|
+        v.memory = VM_MEMORY
+        v.cpus = VM_CPUS
+    end
+
+    config.vm.box = 'ubuntu/jammy64'
+    config.vm.provision :shell, inline: $script, privileged: true
+    config.vm.synced_folder "./", "/home/vagrant/webtestgen"
+end

@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "simulation-code"
+version = "0.1.0"
+description = ""
+authors = ["anon <anon@anon.com>"]
+readme = "README.md"
+package-mode = false
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8.19"
+numpy = "1.22.0"
+scipy = "1.5.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
