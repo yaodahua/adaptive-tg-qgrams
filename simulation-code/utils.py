@@ -90,7 +90,7 @@ def write_summary_statistics(delay=False, is_triangle=False):
     triangle_dir = ""
     lengths = [100, 1000, 10000, 66225]
     if is_triangle:
-        triangle_dir = "2"
+        triangle_dir = "_tr"
         lengths = [10, 100, 300]
     del_dir = ""
     if delay:
@@ -135,7 +135,7 @@ def write_summary_statistics(delay=False, is_triangle=False):
 def write_f_t_results(res, gen, length, delay=False, is_triangle=False):
     triangle_dir = ""
     if is_triangle:
-        triangle_dir = "2"
+        triangle_dir = "_tr"
     del_dir = ""
     if delay:
         del_dir = "_del"
@@ -158,7 +158,7 @@ def write_f_t_results(res, gen, length, delay=False, is_triangle=False):
 def write_p_results(res, gen, length, delay=False, is_triangle=False):
     triangle_dir = ""
     if is_triangle:
-        triangle_dir = "2"
+        triangle_dir = "_tr"
     del_dir = ""
     if delay:
         del_dir = "_del"
