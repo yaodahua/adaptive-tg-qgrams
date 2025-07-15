@@ -8,6 +8,7 @@ import utils
 import argparse
 import os
 from scipy.stats import norm
+import incr_entropy
 
 
 def random_gen(test_gen_budget=100000, stop_at_failure=False, delay=False, max_len=10):
@@ -62,20 +63,36 @@ def ART_dist(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, delay
     return f / test_gen_budget
 
 def update_probs(probs, a, b, c, max_len=10):
-    probs[a] += norm.pdf(a, scale = max_len/5)  # 5 sigma ensure nice decay of probabilities between 0 and max_len
-    probs[b] += norm.pdf(b, scale = max_len/5)
-    probs[c] += norm.pdf(c, scale = max_len/5)
+    std = 2  # max_len/5
+    if a in probs:
+        probs[a] += norm.pdf(a, scale=std)  # 5 sigma ensure nice decay of probabilities between 0 and max_len
+    else:
+        probs[a] = norm.pdf(a, scale=std)
+    if b in probs:
+        probs[b] += norm.pdf(b, scale=std)
+    else:
+        probs[b] = norm.pdf(b, scale=std)
+    if c in probs:
+        probs[c] += norm.pdf(c, scale=std)
+    else:
+        probs[c] = norm.pdf(c, scale=std)
 
 def ART_bigram(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, delay=False, max_len=10):
     if stop_at_failure:
         start = time.time()
+    std = 2  # max_len/5
     Z = []
-    probs = [0.0 for _ in range(max_len+1)]
+    probs = {}
+    ient = incr_entropy.IncrementalEntropy()
     a = random.randint(0, max_len)
     b = random.randint(0, max_len)
     c = random.randint(0, max_len)
     Z.append((a, b, c))
-    update_probs(probs, a, b, c, max_len)
+    # update_probs(probs, a, b, c, max_len)
+    probs[a] = norm.pdf(a, scale=std)
+    probs[b] = norm.pdf(b, scale=std)
+    probs[c] = norm.pdf(c, scale=std)
+    ient.inc_entropy(probs)
     n = 1
     f = 0.0
     if triangle_type.triangle_type(a, b, c, delay) != triangle_type.triangle_type_mu1(a, b, c):
@@ -89,9 +106,13 @@ def ART_bigram(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, del
             a = random.randint(0, max_len)
             b = random.randint(0, max_len)
             c = random.randint(0, max_len)
-            local_probs = probs.copy()
-            update_probs(local_probs, a, b, c, max_len)
-            ent = scipy.stats.entropy(local_probs, base=2)
+            local_probs = {}  # probs.copy()
+            local_probs[a] = norm.pdf(a, scale=std)
+            local_probs[b] = norm.pdf(b, scale=std)
+            local_probs[c] = norm.pdf(c, scale=std)
+            # update_probs(local_probs, a, b, c, max_len)
+            # ent = scipy.stats.entropy(list(local_probs.values()), base=2)
+            ent = ient.inc_entropy(local_probs)
             W.append((a, b, c))
             W_ent.append(ent)
         t_exec = W[np.argmax(W_ent)]
@@ -102,29 +123,34 @@ def ART_bigram(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, del
             if stop_at_failure:
                 return (n, time.time() - start)
         Z.append(t_exec)
-        update_probs(probs, t_exec[0], t_exec[1], t_exec[2], max_len)
+        # update_probs(probs, t_exec[0], t_exec[1], t_exec[2], max_len)
+        local_probs = {}
+        local_probs[t_exec[0]] = norm.pdf(t_exec[0], scale=std)
+        local_probs[t_exec[1]] = norm.pdf(t_exec[1], scale=std)
+        local_probs[t_exec[2]] = norm.pdf(t_exec[2], scale=std)
+        ient.store_changes(local_probs)
     return f / test_gen_budget
 
 
 
 def f_t_measure(runs_rand=1000, runs_dist=10, runs_bigrams=100, delay=False, max_len=10):
     res_rand = []
-    print(f'**** Running Rand ({runs_rand})****')
+    print(f'**** Running Rand ({runs_rand}) ****')
     for i in range(runs_rand):
         res_rand.append(random_gen(stop_at_failure=True, delay=delay, max_len=max_len))
-        print(f'{i}/{runs_rand}')
+        print(f'{i+1}/{runs_rand}')
     # res_rand = [random_gen(stop_at_failure=True) for i in range(runs_rand)]
     res_dist = []
     print(f'**** Running Dist ({runs_dist}) ****')
     for i in range(runs_dist):
         res_dist.append(ART_dist(stop_at_failure=True, delay=delay, max_len=max_len))
-        print(f'{i}/{runs_dist}')
+        print(f'{i+1}/{runs_dist}')
     # res_dist = [ART_dist(stop_at_failure=True) for i in range(runs_dist)]
     res_bigrams = []
     print(f'**** Running Bigram ({runs_bigrams}) ****')
     for i in range(runs_bigrams):
         res_bigrams.append(ART_bigram(stop_at_failure=True, delay=delay, max_len=max_len))
-        print(f'{i}/{runs_bigrams}')
+        print(f'{i+1}/{runs_bigrams}')
     # res_bigrams = [ART_bigram(stop_at_failure=True) for i in range(runs_bigrams)]
     f_rand = 0 if runs_rand == 0 else np.mean([n for n, t in res_rand])
     f_dist = 0 if runs_dist == 0 else np.mean([n for n, t in res_dist])
@@ -146,19 +172,19 @@ def p_measure(runs_rand=1000, runs_dist=10, runs_bigrams=100, tgen_budget=50, ma
     print(f'**** Running Rand ({runs_rand}) ****')
     for i in range(runs_rand):
         res_rand.append(random_gen(test_gen_budget=tgen_budget, max_len=max_len))
-        print(f'{i}/{runs_rand}')
+        print(f'{i+1}/{runs_rand}')
     # res_rand = [random_gen(test_gen_budget=tgen_budget) for i in range(runs_rand)]
     res_dist = []
     print(f'**** Running Dist ({runs_dist}) ****')
     for i in range(runs_dist):
         res_dist.append(ART_dist(test_gen_budget=tgen_budget, max_len=max_len))
-        print(f'{i}/{runs_dist}')
+        print(f'{i+1}/{runs_dist}')
     # res_dist = [ART_dist(test_gen_budget=tgen_budget) for i in range(runs_dist)]
     res_bigrams = []
     print(f'**** Running Bigram ({runs_bigrams}) ****')
     for i in range(runs_bigrams):
         res_bigrams.append(ART_bigram(test_gen_budget=tgen_budget, max_len=max_len))
-        print(f'{i}/{runs_bigrams}')
+        print(f'{i+1}/{runs_bigrams}')
     # res_bigrams = [ART_bigram(test_gen_budget=tgen_budget) for i in range(runs_bigrams)]
     p_rand = 0 if runs_rand == 0 else np.mean(res_rand)
     p_dist = 0 if runs_dist == 0 else np.mean(res_dist)
@@ -208,7 +234,7 @@ args.add_argument(
 args = args.parse_args()
 
 
-
+# python test_gen_triangle.py --max-side-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
 if __name__ == '__main__':
     MAX_SIDE_LENGTH = args.max_side_length
     ADD_DELAY = args.delay

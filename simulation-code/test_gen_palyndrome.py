@@ -7,6 +7,8 @@ import scipy
 import utils
 import argparse
 import os
+import incr_entropy
+
 
 def random_string(max_len=100, start_char=97, end_char=122):
     length = random.randint(0, max_len)
@@ -92,6 +94,8 @@ def ART_bigram(
     s = random_string(max_len)
     Z.append(s)
     bigram_count(bigram_dict, s)
+    ient = incr_entropy.IncrementalEntropy()
+    ient.inc_entropy(bigram_dict)
     n = 1
     f = 0.0
     if is_palyndrome.is_palyndrom(s, delay) != is_palyndrome.is_palyndrom_mu1(s):
@@ -103,9 +107,10 @@ def ART_bigram(
         W_ent = []
         for i in range(W_sample_size):
             s = random_string(max_len)
-            local_bigram_dict = dict(bigram_dict)
+            local_bigram_dict = {}  # = dict(bigram_dict)
             bigram_count(local_bigram_dict, s)
-            ent = scipy.stats.entropy(list(local_bigram_dict.values()), base=2)
+            # ent = scipy.stats.entropy(list(local_bigram_dict.values()), base=2)
+            ent = ient.inc_entropy(local_bigram_dict)
             W.append(s)
             W_ent.append(ent)
         s_exec = W[np.argmax(W_ent)]
@@ -117,7 +122,10 @@ def ART_bigram(
             if stop_at_failure:
                 return (n, time.time() - start)
         Z.append(s_exec)
-        bigram_count(bigram_dict, s_exec)
+        # bigram_count(bigram_dict, s_exec)
+        local_bigram_dict = {}
+        bigram_count(local_bigram_dict, s_exec)
+        ient.store_changes(local_bigram_dict)
     return f / test_gen_budget
 
 
@@ -125,21 +133,24 @@ def f_t_measure(
     runs_rand=1000, runs_dist=10, runs_bigrams=100, delay=False, max_len=100
 ):
     res_rand = []
+    print(f'**** Running Rand ({runs_rand}) ****')
     for i in range(runs_rand):
         res_rand.append(random_gen(stop_at_failure=True, delay=delay, max_len=max_len))
-        print(f"{i}/{runs_rand}")
+        print(f"{i+1}/{runs_rand}")
     # res_rand = [random_gen(stop_at_failure=True) for i in range(runs_rand)]
     res_dist = []
+    print(f'**** Running Dist ({runs_dist}) ****')
     for i in range(runs_dist):
         res_dist.append(ART_dist(stop_at_failure=True, delay=delay, max_len=max_len))
-        print(f"{i}/{runs_dist}")
+        print(f"{i+1}/{runs_dist}")
     # res_dist = [ART_dist(stop_at_failure=True) for i in range(runs_dist)]
     res_bigrams = []
+    print(f'**** Running Bigram ({runs_bigrams}) ****')
     for i in range(runs_bigrams):
         res_bigrams.append(
             ART_bigram(stop_at_failure=True, delay=delay, max_len=max_len)
         )
-        print(f"{i}/{runs_bigrams}")
+        print(f"{i+1}/{runs_bigrams}")
     # res_bigrams = [ART_bigram(stop_at_failure=True) for i in range(runs_bigrams)]
     f_rand = 0 if runs_rand == 0 else np.mean([n for n, t in res_rand])
     f_dist = 0 if runs_dist == 0 else np.mean([n for n, t in res_dist])
@@ -165,19 +176,22 @@ def p_measure(
     max_len=100,
 ):
     res_rand = []
+    print(f'**** Running Rand ({runs_rand}) ****')
     for i in range(runs_rand):
         res_rand.append(random_gen(test_gen_budget=tgen_budget, max_len=max_len))
-        print(f"{i}/{runs_rand}")
+        print(f"{i+1}/{runs_rand}")
     # res_rand = [random_gen(test_gen_budget=tgen_budget) for i in range(runs_rand)]
     res_dist = []
+    print(f'**** Running Dist ({runs_dist}) ****')
     for i in range(runs_dist):
         res_dist.append(ART_dist(test_gen_budget=tgen_budget, max_len=max_len))
-        print(f"{i}/{runs_dist}")
+        print(f"{i+1}/{runs_dist}")
     # res_dist = [ART_dist(test_gen_budget=tgen_budget) for i in range(runs_dist)]
     res_bigrams = []
+    print(f'**** Running Bigram ({runs_bigrams}) ****')
     for i in range(runs_bigrams):
         res_bigrams.append(ART_bigram(test_gen_budget=tgen_budget, max_len=max_len))
-        print(f"{i}/{runs_bigrams}")
+        print(f"{i+1}/{runs_bigrams}")
     # res_bigrams = [ART_bigram(test_gen_budget=tgen_budget) for i in range(runs_bigrams)]
     p_rand = 0 if runs_rand == 0 else np.mean(res_rand)
     p_dist = 0 if runs_dist == 0 else np.mean(res_dist)
@@ -226,7 +240,7 @@ args.add_argument(
 #args, _ = args.parse_args()
 args = args.parse_args()
 
-
+# python test_gen_palyndrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
 if __name__ == "__main__":
     # 66225 ensures failure rate = 1.51e-5 for random generation
     MAX_STR_LENGTH = args.max_string_length
@@ -267,4 +281,6 @@ if __name__ == "__main__":
         f"results/F_T_measure_bigrams_{MAX_STR_LENGTH}.csv",
         f"results/F_T_measure_rand_{MAX_STR_LENGTH}.csv",
     )
-    print(p_val1, p_val2)
+    print(f'Bigrams vs Rand (P-meas): p-val = {p_val}')
+    print(f'Bigrams vs Rand (F-meas): p-val = {p_val1}')
+    print(f'Bigrams vs Rand (T-meas): p-val = {p_val2}')
