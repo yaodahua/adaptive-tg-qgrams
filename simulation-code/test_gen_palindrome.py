@@ -1,9 +1,8 @@
 import random
-import is_palyndrome
+import is_palindrome
 import time
 import numpy as np
 from difflib import SequenceMatcher
-import scipy
 import utils
 import argparse
 import os
@@ -26,7 +25,7 @@ def random_gen(test_gen_budget=100000, stop_at_failure=False, delay=False, max_l
     while n < test_gen_budget or stop_at_failure:
         s = random_string(max_len)
         n += 1
-        if is_palyndrome.is_palyndrom(s, delay) != is_palyndrome.is_palyndrom_mu1(s):
+        if is_palindrome.is_palindrom(s, delay) != is_palindrome.is_palindrom_mu1(s):
             f += 1.0
             if stop_at_failure:
                 return (n, time.time() - start)
@@ -47,7 +46,7 @@ def ART_dist(
     Z.append(s)
     n = 1
     f = 0.0
-    if is_palyndrome.is_palyndrom(s, delay) != is_palyndrome.is_palyndrom_mu1(s):
+    if is_palindrome.is_palindrom(s, delay) != is_palindrome.is_palindrom_mu1(s):
         f += 1.0
         if stop_at_failure:
             return (n, time.time() - start)
@@ -61,7 +60,7 @@ def ART_dist(
             W_dist.append(min_dist)
         s_exec = W[np.argmax(W_dist)]
         n += 1
-        if is_palyndrome.is_palyndrom(s_exec, delay) != is_palyndrome.is_palyndrom_mu1(
+        if is_palindrome.is_palindrom(s_exec, delay) != is_palindrome.is_palindrom_mu1(
             s_exec
         ):
             f += 1.0
@@ -98,7 +97,7 @@ def ART_bigram(
     ient.inc_entropy(bigram_dict)
     n = 1
     f = 0.0
-    if is_palyndrome.is_palyndrom(s, delay) != is_palyndrome.is_palyndrom_mu1(s):
+    if is_palindrome.is_palindrom(s, delay) != is_palindrome.is_palindrom_mu1(s):
         f += 1.0
         if stop_at_failure:
             return (n, time.time() - start)
@@ -109,13 +108,12 @@ def ART_bigram(
             s = random_string(max_len)
             local_bigram_dict = {}  # = dict(bigram_dict)
             bigram_count(local_bigram_dict, s)
-            # ent = scipy.stats.entropy(list(local_bigram_dict.values()), base=2)
             ent = ient.inc_entropy(local_bigram_dict)
             W.append(s)
             W_ent.append(ent)
         s_exec = W[np.argmax(W_ent)]
         n += 1
-        if is_palyndrome.is_palyndrom(s_exec, delay) != is_palyndrome.is_palyndrom_mu1(
+        if is_palindrome.is_palindrom(s_exec, delay) != is_palindrome.is_palindrom_mu1(
             s_exec
         ):
             f += 1.0
@@ -240,7 +238,7 @@ args.add_argument(
 #args, _ = args.parse_args()
 args = args.parse_args()
 
-# python test_gen_palyndrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
+# python test_gen_palindrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
 if __name__ == "__main__":
     # 66225 ensures failure rate = 1.51e-5 for random generation
     MAX_STR_LENGTH = args.max_string_length

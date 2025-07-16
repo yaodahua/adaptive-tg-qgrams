@@ -11,6 +11,28 @@ from scipy.stats import norm
 import incr_entropy
 
 
+def map_to_bucket(a, b, c, max_len):
+    num_buckets = 10
+    bucket_a = bucket_b = bucket_c = num_buckets - 1
+    for i in range(num_buckets):
+        if a >= i * max_len // num_buckets and a < (i + 1) * max_len // num_buckets:
+            bucket_a = i
+        if b >= i * max_len // num_buckets and b < (i + 1) * max_len // num_buckets:
+            bucket_b = i
+        if c >= i * max_len // num_buckets and c < (i + 1) * max_len // num_buckets:
+            bucket_c = i
+    return num_buckets ** 2 * bucket_a + num_buckets * bucket_b + bucket_c
+
+
+
+def bigram_count(dict, a, b, c, max_len):
+    bucket = map_to_bucket(a, b, c, max_len)
+    if bucket in dict:
+        dict[bucket] += 1
+    else:
+        dict[bucket] = 1
+
+
 def random_gen(test_gen_budget=100000, stop_at_failure=False, delay=False, max_len=10):
     if stop_at_failure:
         start = time.time()
@@ -62,37 +84,20 @@ def ART_dist(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, delay
         Z.append(t_exec)
     return f / test_gen_budget
 
-def update_probs(probs, a, b, c, max_len=10):
-    std = 2  # max_len/5
-    if a in probs:
-        probs[a] += norm.pdf(a, scale=std)  # 5 sigma ensure nice decay of probabilities between 0 and max_len
-    else:
-        probs[a] = norm.pdf(a, scale=std)
-    if b in probs:
-        probs[b] += norm.pdf(b, scale=std)
-    else:
-        probs[b] = norm.pdf(b, scale=std)
-    if c in probs:
-        probs[c] += norm.pdf(c, scale=std)
-    else:
-        probs[c] = norm.pdf(c, scale=std)
 
+# it actually uses tri-grams, not bigrams
 def ART_bigram(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, delay=False, max_len=10):
     if stop_at_failure:
         start = time.time()
-    std = 2  # max_len/5
     Z = []
-    probs = {}
+    bigram_dict = {}
     ient = incr_entropy.IncrementalEntropy()
     a = random.randint(0, max_len)
     b = random.randint(0, max_len)
     c = random.randint(0, max_len)
     Z.append((a, b, c))
-    # update_probs(probs, a, b, c, max_len)
-    probs[a] = norm.pdf(a, scale=std)
-    probs[b] = norm.pdf(b, scale=std)
-    probs[c] = norm.pdf(c, scale=std)
-    ient.inc_entropy(probs)
+    bigram_count(bigram_dict, a, b, c, max_len)
+    ient.inc_entropy(bigram_dict)
     n = 1
     f = 0.0
     if triangle_type.triangle_type(a, b, c, delay) != triangle_type.triangle_type_mu1(a, b, c):
@@ -106,13 +111,9 @@ def ART_bigram(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, del
             a = random.randint(0, max_len)
             b = random.randint(0, max_len)
             c = random.randint(0, max_len)
-            local_probs = {}  # probs.copy()
-            local_probs[a] = norm.pdf(a, scale=std)
-            local_probs[b] = norm.pdf(b, scale=std)
-            local_probs[c] = norm.pdf(c, scale=std)
-            # update_probs(local_probs, a, b, c, max_len)
-            # ent = scipy.stats.entropy(list(local_probs.values()), base=2)
-            ent = ient.inc_entropy(local_probs)
+            local_bigram_dict = {}
+            bigram_count(local_bigram_dict, a, b, c, max_len)
+            ent = ient.inc_entropy(local_bigram_dict)
             W.append((a, b, c))
             W_ent.append(ent)
         t_exec = W[np.argmax(W_ent)]
@@ -124,11 +125,9 @@ def ART_bigram(test_gen_budget=100, W_sample_size=10, stop_at_failure=False, del
                 return (n, time.time() - start)
         Z.append(t_exec)
         # update_probs(probs, t_exec[0], t_exec[1], t_exec[2], max_len)
-        local_probs = {}
-        local_probs[t_exec[0]] = norm.pdf(t_exec[0], scale=std)
-        local_probs[t_exec[1]] = norm.pdf(t_exec[1], scale=std)
-        local_probs[t_exec[2]] = norm.pdf(t_exec[2], scale=std)
-        ient.store_changes(local_probs)
+        local_bigram_dict = {}
+        bigram_count(local_bigram_dict, t_exec[0], t_exec[1], t_exec[2], max_len)
+        ient.store_changes(local_bigram_dict)
     return f / test_gen_budget
 
 

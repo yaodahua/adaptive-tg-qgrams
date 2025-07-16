@@ -5,7 +5,7 @@ import datetime
 DELAY_SECS = 0.01  # 10ms delay
 
 
-def is_palyndrom(s: str, delay=False):
+def is_palindrom(s: str, delay=False):
     if delay:
         time.sleep(DELAY_SECS)
     if s == "" or len(s) == 1:
@@ -17,7 +17,7 @@ def is_palyndrom(s: str, delay=False):
     return False
 
 
-def is_palyndrom_mu1(s: str):
+def is_palindrom_mu1(s: str):
     if s == "" or len(s) == 1:
         return True
     while len(s) > 1 and s[0] == s[-1]:
@@ -27,7 +27,7 @@ def is_palyndrom_mu1(s: str):
     return False
 
 
-def timed_is_palyndrom(s: str, delay=False):
+def timed_is_palindrom(s: str, delay=False):
     start = datetime.datetime.now()
     if s == "" or len(s) == 1:
         return (datetime.datetime.now() - start).total_seconds()
