@@ -15,13 +15,13 @@ poetry install
 Without delay:
 
 ```commandline
-python test_gen_palyndrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
+python test_gen_palindrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
 ```
 
 With delay:
 
 ```commandline
-python test_gen_palyndrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100 --delay
+python test_gen_palindrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100
 ```
 
 Please refer to the paper for an estimation of how much time the experiments take.

@@ -1,0 +1,11 @@
+=== TF-IDF vs Bigram F/T-measure 对比结果 ===
+最大字符串长度: 100
+延迟设置: False
+TF-IDF F-measure: 23.784000
+Bigram F-measure: 120.151000
+TF-IDF T-measure: 0.018082
+Bigram T-measure: 0.061649
+F-measure差异: -96.367000
+T-measure差异: -0.043566
+F-measure提升: -80.20%
+T-measure提升: -70.67%

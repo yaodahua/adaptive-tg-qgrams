@@ -1,0 +1,6 @@
+Method1,Method2,MaxLength,P_Pvalue,F_Pvalue,T_Pvalue,P_Significant,F_Significant,T_Significant
+simidf,tfidf,1000,0.000000,0.000000,0.000000,True,True,True
+tfidf,bigrams,100,0.000000,0.000000,0.000000,True,True,True
+simidf,bigrams,100,0.000000,0.000000,0.000000,True,True,True
+tfidf,simidf,100,0.000000,0.000000,0.004057,True,True,True
+simidf,bigrams,10000,0.261487,0.003494,0.001551,False,True,True

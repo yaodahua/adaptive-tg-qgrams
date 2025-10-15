@@ -1,0 +1,7 @@
+=== TF-IDF vs Bigram P-measure 对比结果 ===
+最大字符串长度: 100
+延迟设置: False
+TF-IDF P-measure: 0.046060
+Bigram P-measure: 0.000380
+P-measure差异: 0.045680
+P-measure提升: 12021.05%

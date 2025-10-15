@@ -1,0 +1,16 @@
+=== TF-IDF vs Bigram 统计显著性检验结果 ===
+最大字符串长度: 1000
+延迟设置: False
+P-measure p-value: 5.704022827823477e-08
+F-measure p-value: 0.9403827290287327
+T-measure p-value: 2.1447969974081088e-182
+
+=== p-value解释 ===
+p-value < 0.05: 差异具有统计显著性
+p-value < 0.01: 差异具有高度统计显著性
+p-value < 0.001: 差异具有极高度统计显著性
+
+=== 统计显著性判断 ===
+P-measure: 差异具有极高度统计显著性
+F-measure: 差异不具有统计显著性
+T-measure: 差异具有极高度统计显著性

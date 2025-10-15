@@ -1,0 +1,54 @@
+=== TF-IDF vs Bigram 综合对比报告 ===
+生成时间: 2025-10-14 17:09:41
+最大字符串长度: 1000
+延迟设置: False
+==================================================
+
+1. F/T-measure 对比结果
+------------------------------
+=== TF-IDF vs Bigram F/T-measure 对比结果 ===
+最大字符串长度: 1000
+延迟设置: False
+TF-IDF F-measure: 214.943000
+Bigram F-measure: 172.913000
+TF-IDF T-measure: 4.995628
+Bigram T-measure: 0.734933
+F-measure差异: 42.030000
+T-measure差异: 4.260695
+F-measure提升: 24.31%
+T-measure提升: 579.74%
+
+2. P-measure 对比结果
+------------------------------
+=== TF-IDF vs Bigram P-measure 对比结果 ===
+最大字符串长度: 1000
+延迟设置: False
+TF-IDF P-measure: 0.004000
+Bigram P-measure: 0.000820
+P-measure差异: 0.003180
+P-measure提升: 387.80%
+
+3. 统计显著性检验结果
+------------------------------
+=== TF-IDF vs Bigram 统计显著性检验结果 ===
+最大字符串长度: 1000
+延迟设置: False
+P-measure p-value: 5.704022827823477e-08
+F-measure p-value: 0.9403827290287327
+T-measure p-value: 2.1447969974081088e-182
+
+=== p-value解释 ===
+p-value < 0.05: 差异具有统计显著性
+p-value < 0.01: 差异具有高度统计显著性
+p-value < 0.001: 差异具有极高度统计显著性
+
+=== 统计显著性判断 ===
+P-measure: 差异具有极高度统计显著性
+F-measure: 差异不具有统计显著性
+T-measure: 差异具有极高度统计显著性
+
+4. 综合结论
+------------------------------
+TF-IDF与Bigram方法在P-measure, T-measure指标上存在统计显著性差异。
+
+建议：根据具体应用场景选择合适的测试生成方法。
