@@ -1,0 +1,88 @@
+执行器功能说明文档
+====================
+
+本文档说明 web-application-code/executors/ 目录下两个核心执行器文件的功能。
+
+1. execution_output.py 文件功能说明
+----------------------------------
+
+文件路径: /home/wlsju/adaptive-tg-qgrams/web-application-code/executors/execution_output.py
+
+主要功能: 解析测试执行输出, 提取覆盖目标和可行代码前缀。
+
+核心类: ExecutionOutput
+
+主要方法:
+- get_covered_targets(): 从执行输出中提取覆盖的目标 (M/IF/ELSE类型)
+- get_feasible_prefix(): 获取可行的代码前缀 (排除异常行)
+- _get_uncaught_exception_line(): 获取未捕获异常的行号
+- _get_caught_exception_lines(): 获取捕获异常的行号列表
+- _filter_by_uncaught_exceptions(): 根据未捕获异常过滤代码
+- _filter_by_caught_exceptions(): 根据捕获异常过滤代码
+
+2. executor.py 文件功能说明
+--------------------------
+
+文件路径: /home/wlsju/adaptive-tg-qgrams/web-application-code/executors/executor.py
+
+主要功能: Docker容器管理和测试执行的核心抽象类。
+
+核心类: Executor (抽象基类)
+
+主要功能模块:
+
+2.1 容器生命周期管理
+- start_containers(): 启动所有相关容器 (Chrome, 应用, 运行时)
+- start_container_by_name(): 按名称启动特定容器
+- stop_container_by_name(): 按名称停止特定容器
+- stop_containers(): 停止所有容器并清理网络
+
+2.2 容器具体实现
+- _start_chrome_container(): 启动Chrome浏览器容器
+- _start_runtime_container(): 启动运行时环境容器
+- _start_application_container(): 抽象方法, 由具体应用执行器实现
+
+2.3 测试执行
+- execute(): 执行测试用例并返回执行结果
+- is_app_container_ready(): 检查应用容器是否就绪
+
+2.4 辅助功能
+- get_container_name(): 获取特定类型容器的名称
+- list_all_containers(): 列出所有容器
+- list_all_networks(): 列出所有网络
+- load_executor(): 静态方法, 加载特定应用的执行器
+
+3. 两个文件的协作关系
+---------------------
+
+- Executor类负责管理Docker容器环境和执行测试
+- ExecutionOutput类负责解析执行结果并提取有用信息
+- 执行流程: Executor.execute() -> 返回ExecutionOutput对象 -> 解析覆盖信息
+
+4. 使用场景
+-----------
+
+这两个文件是Web应用测试框架的核心组件:
+- 自动化测试执行环境管理
+- 测试结果分析和覆盖信息提取
+- 支持多种Web应用的测试执行
+
+5. 重要依赖
+-----------
+
+- docker: 容器管理
+- re: 正则表达式解析
+- typing: 类型注解
+- config: 应用配置
+- global_log: 日志记录
+- individuals: 个体表示
+- utils: 工具函数
+
+6. 运行方式
+-----------
+
+这两个文件通常作为测试框架的一部分被调用, 不直接独立运行。
+主要通过 main.py 或测试执行脚本间接使用。
+
+创建时间: 2024年
+文件位置: /home/wlsju/adaptive-tg-qgrams/web-application-code/executors/

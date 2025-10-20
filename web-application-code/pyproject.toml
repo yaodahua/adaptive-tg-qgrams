@@ -26,6 +26,11 @@ pytest = "^3.0"
 [tool.poetry.group.dev.dependencies]
 openpyxl = "^3.1.5"
 
+[[tool.poetry.source]]
+name = "mirrors"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+priority = "primary"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

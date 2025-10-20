@@ -1,0 +1,168 @@
+main.py 文件详细功能说明
+==========================
+
+文件概述
+--------
+main.py 是自适应测试生成系统的核心主程序模块, 负责协调整个测试生成流程, 包括测试用例生成, 执行, 覆盖率跟踪和结果保存.
+
+主要功能
+--------
+1. 命令行参数解析和配置管理
+2. 支持从断点恢复执行
+3. 多种测试用例生成器集成
+4. 容器化测试环境管理
+5. 实时代码覆盖率监控
+6. 详细的执行统计和结果保存
+
+模块结构
+--------
+
+### 1. 导入模块
+- json, os, pathlib, pickle, re, time: 基础文件操作和数据处理
+- docker: 容器管理
+- numpy, requests: 数学计算和网络请求
+- 自定义模块: config, executors, generators, global_log, individuals, parsing, utils
+
+### 2. 命令行参数解析
+支持以下命令行参数:
+- --app-name: 被测试应用名称(必选)
+- --generator-name: 测试用例生成器名称(默认: random)
+- --budget: 测试时间预算(秒, 默认: 180)
+- --seed: 随机数种子(默认: -1, 表示随机生成)
+- --progress: 显示进度条
+- --resume-filepath: 恢复执行文件路径
+- --max-length: 测试用例最大长度(默认: 30)
+- --num-candidates: 候选测试用例数量(默认: 5)
+- --q: Q-gram参数(默认: 2)
+- --diversity-strategy: 多样性策略(默认: sequence)
+
+### 3. 主程序逻辑
+
+#### 3.1 初始化阶段
+- 解析命令行参数
+- 初始化日志记录器
+- 处理恢复执行逻辑(如果指定了resume-filepath)
+
+#### 3.2 恢复执行处理
+- 验证恢复文件存在性和格式
+- 从文件名提取种子和日期信息
+- 验证参数一致性
+- 加载历史执行数据
+- 恢复生成器状态, 随机数状态, 已覆盖目标和测试套件
+
+#### 3.3 新执行处理
+- 生成随机种子(如果未指定)
+- 设置随机数种子
+
+#### 3.4 参数验证
+- 验证候选数量为正数
+- 验证Q-gram参数为正数
+
+#### 3.5 执行器初始化
+- 加载对应应用的执行器
+- 启动容器网络
+- 处理容器启动异常
+
+#### 3.6 覆盖率目标处理
+- 检查覆盖率目标文件是否存在
+- 如果存在则直接加载
+- 如果不存在则进行代码插桩获取覆盖率目标
+
+#### 3.7 测试用例生成器初始化
+- 根据参数加载对应的测试用例生成器
+- 如果恢复执行, 恢复生成器状态和测试套件
+
+#### 3.8 主循环执行
+- 在预算时间内循环执行测试生成和执行
+- 检查Chrome容器状态, 必要时重启
+- 生成测试用例并记录生成时间
+- 执行测试用例并记录执行时间
+- 更新覆盖率统计
+- 更新进度条显示
+- 记录调试信息
+- 验证覆盖率统计正确性
+- 更新最终测试套件
+- 停止Chrome容器避免内存泄漏
+
+#### 3.9 结果保存
+- 停止所有容器
+- 关闭进度条
+- 计算执行时间
+- 准备结果JSON数据
+- 创建结果目录
+- 保存结果文件, 测试套件, 覆盖目标, 生成器状态, 随机数状态
+
+关键特性
+--------
+
+### 1. 恢复执行能力
+系统支持从任意断点恢复执行, 确保长时间运行的测试任务不会因意外中断而丢失进度.
+
+### 2. 多种生成策略
+支持5种测试用例生成器:
+- 随机生成器(Random)
+- 距离生成器(Distance)
+- Q-gram生成器(Q-grams)
+- TF-IDF生成器
+- SimIDF生成器
+
+### 3. 容器化环境
+使用Docker容器管理测试环境, 确保测试的隔离性和可重复性.
+
+### 4. 实时监控
+实时监控代码覆盖率, 生成时间, 执行时间等关键指标.
+
+### 5. 详细日志
+提供详细的调试信息, 便于问题排查和性能分析.
+
+文件依赖关系
+------------
+- config.py: 配置参数定义
+- executors/executor.py: 执行器基类
+- generators/test_case_generator.py: 测试用例生成器基类
+- global_log.py: 日志记录模块
+- individuals/individual.py: 个体(测试用例)定义
+- parsing/instrument.py: 代码插桩模块
+- utils/file_utils.py: 文件操作工具
+- utils/randomness_utils.py: 随机数工具
+
+使用示例
+--------
+```bash
+# 基本使用
+python main.py --app-name dimeshift --generator-name random --budget 300
+
+# 使用Q-gram生成器
+python main.py --app-name pagekit --generator-name qgrams --q 3 --num-candidates 10
+
+# 恢复执行
+python main.py --app-name dimeshift --resume-filepath results/dimeshift/random/2024-01-01_12-00-00_12345.json
+
+# 显示进度条
+python main.py --app-name petclinic --generator-name distance --progress
+```
+
+输出文件
+--------
+执行完成后会生成以下文件:
+- {date}_{seed}.json: 执行结果统计
+- {date}_{seed}_test_suite.txt: 最终测试套件
+- {date}_{seed}_covered_targets.pkl: 已覆盖目标
+- {date}_{seed}_generator_state.pkl: 生成器状态(非随机生成器)
+- {date}_{seed}_random_state.pkl: 随机数状态
+- {date}_{seed}_final_test_suite.pkl: 最终测试套件对象
+
+注意事项
+--------
+1. 确保Docker服务正常运行
+2. 恢复执行时需要保证参数一致性
+3. 长时间运行建议使用进度条监控
+4. 测试环境需要足够的磁盘空间保存结果文件
+
+版本信息
+--------
+- 文件路径: /home/wlsju/adaptive-tg-qgrams/web-application-code/main.py
+- 最后修改: 需要查看文件属性获取
+- 所属项目: 自适应测试生成系统
+
+这个文件是整个测试生成系统的核心控制器, 负责协调各个模块的工作流程, 确保测试生成任务的顺利完成.

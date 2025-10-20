@@ -1,3 +1,15 @@
+'''
+帮我写个本程序功能说明：
+1. 解析命令行参数，获取应用名称和结果文件夹名称。
+2. 创建分析目录，用于存储分析结果。
+3. 遍历结果目录中的测试方法，加载覆盖目标数据。
+4. 计算困难目标统计，包括困难目标数量、困难目标覆盖率和困难目标平均覆盖率。
+5. 分析独特目标，统计每个测试方法覆盖的独特目标数量。
+6. 将分析结果写入Excel文件，包括困难目标统计和独特目标分析。
+7. 执行统计显著性分析，比较不同测试方法之间的困难目标覆盖率。
+8. 将统计显著性分析结果写入Excel文件。
+'''
+
 from collections import defaultdict
 import json
 import logging
@@ -16,6 +28,7 @@ import argparse
 
 from utils.stats_utils import vargha_delaney, wilcoxon_unpaired_pvalue
 
+# 命令行参数解析
 args = argparse.ArgumentParser()
 args.add_argument(
     "--app-name",
@@ -36,28 +49,31 @@ args, _ = args.parse_known_args()
 
 if __name__ == "__main__":
 
+    # 获取命令行参数
     app_name = args.app_name
     results_folder_name = args.results_folder_name
-    BASELINE = "random"
+    BASELINE = "random"  # 基线方法
 
-    alpha_significance_level = 0.05
+    alpha_significance_level = 0.05  # 显著性水平
 
-    techniques = dict()
-    num_runs = []
+    techniques = dict()  # 存储不同测试方法的数据
+    num_runs = []  # 运行次数列表
     results_dir = os.path.join(results_folder_name, app_name)
 
+    # 创建分析目录
     analysis_dir = os.path.join(results_dir, "analysis")
     os.makedirs(analysis_dir, exist_ok=True)
 
     logger = GlobalLog("analyze_coverage")
 
-    # redirect stdout to a file
+    # 重定向标准输出到文件
     logging.basicConfig(
         filename=os.path.join(analysis_dir, "analyze_coverage.log"),
         level=logging.INFO,
         filemode="w",
     )
 
+    # 遍历结果目录中的测试方法
     for technique in os.listdir(results_dir):
         if technique == "analysis":
             continue
@@ -65,6 +81,7 @@ if __name__ == "__main__":
         if technique not in techniques:
             techniques[technique] = dict()
 
+        # 加载覆盖目标数据
         covered_targets_technique = []
         for pkl_file in filter(
             lambda x: x.endswith(".pkl") and x.endswith("covered_targets.pkl"),
@@ -76,6 +93,7 @@ if __name__ == "__main__":
 
         techniques[technique]["covered_targets"] = covered_targets_technique
 
+        # 加载测试数量数据
         num_tests = []
         for json_file in filter(
             lambda x: x.endswith(".json"),
@@ -88,11 +106,12 @@ if __name__ == "__main__":
         techniques[technique]["num_tests"] = num_tests
         num_runs.append(len(techniques[technique]["covered_targets"]))
 
-    # num runs should be the same for all techniques
+    # 检查所有方法的运行次数是否相同
     assert (
         len(set(num_runs)) == 1
     ), "Number of runs should be the same for all techniques"
 
+    # 加载覆盖目标文件
     coverage_targets_file = get_coverage_targets_file(app_name=app_name)
     with open(coverage_targets_file, "rb") as f:
         coverage_targets = set(pickle.load(f))
@@ -102,6 +121,7 @@ if __name__ == "__main__":
 
     logger.info(f"All targets: {len(all_targets)}")
 
+    # 创建Excel工作簿
     workbook = Workbook()
     workbook.remove(workbook.active)
     complexity_sheet = workbook.create_sheet("Complexity")
@@ -112,6 +132,7 @@ if __name__ == "__main__":
     complexity_sheet["A1"] = app_name
     unique_targets = defaultdict(list)
 
+    # 基线方法的覆盖目标分析
     covered_targets_baseline = {ct: [0] * num_runs[0] for ct in all_targets}
     covered_targets_baseline_cp_estimation = {
         ct: [0] * num_runs[0] for ct in all_targets
@@ -127,6 +148,7 @@ if __name__ == "__main__":
                 "num_tests"
             ][i] / (ct.iteration + 1)
 
+    # 计算困难目标的统计
     probability_threshold = 0.0
     coverage_probability_threshold = 10**-3
     num_difficult_targets = 0
@@ -156,6 +178,7 @@ if __name__ == "__main__":
         f"Num targets with coverage probability estimation < {coverage_probability_threshold}: {num_difficult_targets_cp_estimation} ({num_difficult_targets_cp_estimation/len(all_targets)*100:.2f} %)"
     )
 
+    # 分析每个运行的独特目标
     for i in range(num_runs[0]):
         logger.info(f"========== Run {i} ==========")
         for technique_1 in techniques.keys():
@@ -192,6 +215,7 @@ if __name__ == "__main__":
                 f"Uncovered targets {technique_1}: {[ct.__str__() for ct in uncovered_targets_technique_1]}"
             )
 
+    # 排序技术列表，基线方法排在最前面
     list_keys_techniques = list(techniques.keys())
     assert (
         BASELINE in list_keys_techniques
@@ -200,6 +224,7 @@ if __name__ == "__main__":
     list_keys_techniques.sort()
     list_keys_techniques.insert(0, BASELINE)
 
+    # 将独特目标数据写入Excel
     j = 0
     for i, technique in enumerate(list_keys_techniques):
         assert len(letters) > j + 1, "Too many techniques to display"
@@ -224,6 +249,7 @@ if __name__ == "__main__":
         f"Targets not covered by any technique: {len(uncovered_targets)}, {[ct.__str__() for ct in uncovered_targets]}"
     )
 
+    # 创建统计分析的Excel文件
     workbook = Workbook()
     workbook.remove(workbook.active)
     unique_targets_sheet = workbook.create_sheet("Complexity")
@@ -231,6 +257,7 @@ if __name__ == "__main__":
 
     logger.info("=" * 5 + " Statistical Analysis " + "=" * 5)
 
+    # 执行统计显著性分析
     for i in range(len(list_keys_techniques)):
         technique1 = list_keys_techniques[i]
         if i != len(list_keys_techniques) - 1:
@@ -243,6 +270,7 @@ if __name__ == "__main__":
 
             logger.info(f"* {technique1} vs {technique2} *")
 
+            # 计算p值和效应大小
             p_value = wilcoxon_unpaired_pvalue(
                 a=unique_targets[technique1], b=unique_targets[technique2]
             )
@@ -270,6 +298,7 @@ if __name__ == "__main__":
         filename=os.path.join(analysis_dir, "table_complexity_statistics.xlsx")
     )
 
+    # 分析每个方法的最困难目标
     logger.info("========== Most difficult target for each technique ==========")
     for technique in techniques.keys():
         logger.info(f"Technique {technique}:")

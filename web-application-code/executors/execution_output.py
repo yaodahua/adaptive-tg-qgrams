@@ -8,25 +8,31 @@ from utils.file_utils import HELPER_FUNCTION_NAME, get_main_class_path
 
 
 class ExecutionOutput:
+    # 执行输出解析类, 用于分析测试执行结果
     def __init__(self, exit_code: int, output: str):
-        self.exit_code = exit_code
-        self.output = output
+        # 初始化执行输出对象
+        self.exit_code = exit_code  # 退出代码
+        self.output = output  # 执行输出内容
 
     def get_covered_targets(self) -> List[CoverageTarget]:
+        # 从执行输出中提取覆盖的目标
         previous_line = None
         targets = []
         for line in self.output.split("\n"):
             match = re.search(r"INFO:\s*(M|IF|ELSE)-\d+", line)
             if match:
+                # 解析目标类型和行号
                 match_split = match.group(0).replace("INFO: ", "").split("-")
                 target_type = match_split[0]
                 line_number = int(match_split[1])
 
+                # 从上一行提取方法名
                 match = re.search(r".*ClassUnderTestInstr\s*(\w+)", previous_line)
                 method_name = None
                 if match:
                     method_name = match.group(1)
 
+                # 创建覆盖目标对象
                 target = CoverageTarget(
                     target_type=target_type,
                     line_number=line_number,
@@ -39,6 +45,7 @@ class ExecutionOutput:
         return targets
 
     def _get_uncaught_exception_line(self) -> Optional[int]:
+        # 获取未捕获异常的行号
         for line in self.output.split("\n"):
             match = re.search(r".*at main\.Main\.main\(Main\.java:(\d+)\)", line)
             if match:
@@ -46,6 +53,7 @@ class ExecutionOutput:
         return None
 
     def _get_caught_exception_lines(self) -> List[int]:
+        # 获取捕获异常的行号列表
         exception_lines = []
         for line in self.output.split("\n"):
             match = re.search(
@@ -56,12 +64,14 @@ class ExecutionOutput:
         return sorted(exception_lines)
 
     def get_feasible_prefix(self, app_name: str) -> List[str]:
-
+        # 获取可行的代码前缀 (排除异常行)
         assert app_name in APP_NAMES, f"App name {app_name} is not valid"
 
+        # 先根据未捕获异常过滤
         code_with_lines_uncaught_exception = self._filter_by_uncaught_exceptions(
             app_name=app_name
         )
+        # 再根据捕获异常过滤
         code_caught_exceptions = self._filter_by_caught_exceptions(
             code_with_lines=code_with_lines_uncaught_exception
         )
@@ -70,32 +80,36 @@ class ExecutionOutput:
     def _filter_by_caught_exceptions(
         self, code_with_lines: List[Tuple[int, str]]
     ) -> List[str]:
+        # 根据捕获异常过滤代码行
         exception_lines = self._get_caught_exception_lines()
 
         code = []
 
         for code_with_line in code_with_lines:
-
+            # 只保留没有异常的行
             if code_with_line[0] not in exception_lines:
                 code.append(code_with_line[1])
 
         return code
 
     def _filter_by_uncaught_exceptions(self, app_name: str) -> List[Tuple[int, str]]:
+        # 根据未捕获异常过滤代码
         exception_line = self._get_uncaught_exception_line()
         if exception_line is None:
             exception_line = -1
 
+        # 读取主类文件
         main_class_path = get_main_class_path(app_name=app_name)
         code_with_lines = []
         append = False
         with open(main_class_path, "r") as f:
             for i, line in enumerate(f.readlines()):
-
+                # 检测main方法开始
                 if line.strip() == "" or line == "}":
                     append = False
 
                 if append:
+                    # 清理辅助函数调用
                     if HELPER_FUNCTION_NAME in line:
                         line_cleaned = (
                             line.strip()
@@ -106,9 +120,11 @@ class ExecutionOutput:
                         line_cleaned = line.strip()
                     code_with_lines.append((i + 1, line_cleaned))
 
+                # 找到main方法开始位置
                 if "public static void main(String[] args)" in line:
                     append = True
 
+                # 在异常行之前停止
                 if i + 1 == exception_line - 1:
                     break
 
@@ -116,8 +132,10 @@ class ExecutionOutput:
 
 
 if __name__ == "__main__":
+    # 测试代码
     app_name = DIMESHIFT_NAME
 
+    # 示例执行输出
     output = """
     Sat Jul 13 13:42:28 GMT 2024 WARN: Establishing SSL connection without server's identity verification is not recommended. According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection must be established by default if explicit option isn't set. For compliance with existing applications not using SSL the verifyServerCertificate property is set to 'false'. You need either to explicitly disable SSL by setting useSSL=false, or set useSSL=true and provide truststore for server certificate verification.
     Jul 13, 2024 1:42:28 PM org.openqa.selenium.remote.ProtocolHandshake createSession
@@ -177,6 +195,7 @@ if __name__ == "__main__":
             ... 8 more
     """
 
+    # 创建执行输出对象并测试功能
     execution_output = ExecutionOutput(exit_code=0, output=output)
     feasible_statements_strings = execution_output.get_feasible_prefix(
         app_name=app_name

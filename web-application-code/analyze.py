@@ -1,3 +1,14 @@
+'''
+本程序包含功能：
+- 命令行参数解析和获取
+- 图表参数设置
+- 数据加载和处理流程
+- 覆盖率图表绘制（主图和放大图）
+- 测试长度变化图绘制
+- Excel工作簿创建和指标记录
+- 统计显著性分析
+'''
+
 import json
 import logging
 import os
@@ -16,6 +27,7 @@ from utils.stats_utils import (
 
 import argparse
 
+# 命令行参数解析
 args = argparse.ArgumentParser()
 args.add_argument(
     "--app-name",
@@ -47,18 +59,22 @@ args, _ = args.parse_known_args()
 
 if __name__ == "__main__":
 
+    # 获取命令行参数
     app_name = args.app_name
     raw_coverage_targets = args.raw_coverage_targets
     results_folder_name = args.results_folder_name
     percentage_iterations = args.percentage_iterations
+    
+    # 图表参数设置
     font_size = 30
     line_width = 4
     fig_size = (16, 9)
     plot_legend = False
     plot_coverage_zoom = True
     coverage_zoom_percentage_max_length = 50
-    BASELINE = "random"
+    BASELINE = "random"  # 基线方法
 
+    # 验证迭代百分比参数
     assert percentage_iterations in np.arange(
         0, 100 + 1
     ), "Number of iterations be between 0 and 100"
@@ -67,25 +83,27 @@ if __name__ == "__main__":
 
     assert os.path.exists(results_dir), f"Results for {app_name} do not exist"
 
-    alpha_significance_level = 0.05
+    alpha_significance_level = 0.05  # 显著性水平
     analysis_dir = os.path.join(results_dir, "analysis")
     os.makedirs(analysis_dir, exist_ok=True)
 
     logger = GlobalLog("analyze")
 
-    # redirect stdout to a file
+    # 重定向标准输出到文件
     logging.basicConfig(
         filename=os.path.join(analysis_dir, "analyze.log"),
         level=logging.INFO,
         filemode="w",
     )
 
-    techniques = dict()
+    techniques = dict()  # 存储不同测试方法的数据
 
+    # 加载覆盖目标文件
     coverage_targets_file = get_coverage_targets_file(app_name=app_name)
     with open(coverage_targets_file, "rb") as f:
         coverage_targets = set(pickle.load(f))
 
+    # 遍历结果目录中的测试方法
     for technique in os.listdir(results_dir):
         if technique == "analysis":
             continue
@@ -93,6 +111,7 @@ if __name__ == "__main__":
         if technique not in techniques:
             techniques[technique] = dict()
 
+        # 初始化数据列表
         coverages_over_time = []
         global_coverages = []
         global_raw_coverages = []
@@ -100,12 +119,15 @@ if __name__ == "__main__":
         num_tests = []
         avg_execution_times = []
         avg_generation_times = []
+        
+        # 处理每个JSON结果文件
         for json_file in filter(
             lambda x: x.endswith(".json"),
             os.listdir(os.path.join(results_dir, technique)),
         ):
             with open(os.path.join(results_dir, technique, json_file), "r") as f:
                 data = json.load(f)
+                # 根据参数选择覆盖率数据格式
                 if raw_coverage_targets:
                     coverage_over_time = list(
                         map(
@@ -116,6 +138,7 @@ if __name__ == "__main__":
                 else:
                     coverage_over_time = data["coverage_over_time"]
 
+                # 加载对应的覆盖目标文件
                 coverage_target_file = f"{json_file.split('.')[0]}_covered_targets.pkl"
                 with open(
                     os.path.join(results_dir, technique, coverage_target_file), "rb"
@@ -123,6 +146,7 @@ if __name__ == "__main__":
                     covered_targets = set(pickle.load(f2))
                     global_raw_coverages.append(len(set(covered_targets)))
 
+                # 收集各种指标数据
                 coverages_over_time.append(coverage_over_time)
                 global_coverages.append(data["global_coverage"])
                 lengths_over_time.append(data["individual_lengths"])
@@ -130,6 +154,7 @@ if __name__ == "__main__":
                 avg_execution_times.append(data["avg_execution_time"])
                 avg_generation_times.append(data["avg_generation_time"])
 
+        # 存储技术方法的数据
         techniques[technique]["coverages_over_time"] = coverages_over_time
         techniques[technique]["global_coverages"] = global_coverages
         techniques[technique]["global_raw_coverages"] = global_raw_coverages
@@ -138,6 +163,7 @@ if __name__ == "__main__":
         techniques[technique]["avg_execution_times"] = avg_execution_times
         techniques[technique]["avg_generation_times"] = avg_generation_times
 
+    # 计算最大和最小测试长度
     max_lengths = [
         max([len(c) for c in techniques[technique]["coverages_over_time"]])
         for technique in techniques.keys()
@@ -150,6 +176,7 @@ if __name__ == "__main__":
     ]
     min_length = min(min_lengths)
 
+    # 初始化效率和其他指标字典
     efficiencies = dict()
     efficiences_at = dict()
     coverages = dict()
@@ -158,16 +185,19 @@ if __name__ == "__main__":
     avg_execution_times = dict()
     avg_generation_times = dict()
 
-    # area of a rectangle = base * height
+    # 计算最大面积（用于AUC标准化）
     max_area = (
         max_length * len(coverage_targets) if raw_coverage_targets else max_length * 100
     )
 
+    # 绘制覆盖率随时间变化图
     plt.figure(figsize=fig_size)
     plt.rcParams["font.size"] = font_size
     plt.rcParams["font.weight"] = "bold"
     for technique in list(techniques.keys()):
         coverages_over_time = techniques[technique]["coverages_over_time"]
+        
+        # 填充数据到相同长度
         for i in range(len(coverages_over_time)):
             coverages_over_time[i] = np.pad(
                 coverages_over_time[i],
@@ -175,6 +205,7 @@ if __name__ == "__main__":
                 mode="edge",
             )
 
+        # 计算指定迭代次数的覆盖率
         coverages_at = []
         for i, c in enumerate(coverages_over_time):
             num_iterations = percentage_iterations * len(c) // 100
@@ -183,11 +214,11 @@ if __name__ == "__main__":
             ), f"There are less than {num_iterations} iterations in technique {technique} at run {i} (corresponding to {percentage_iterations}%)"
             coverages_at.append(c[:num_iterations])
 
-        # area under the curve
+        # 计算曲线下面积（AUC）
         areas = np.trapz(coverages_over_time, axis=1) / max_area
         efficiencies[technique] = areas.tolist()
 
-        # area under the curve at N iterations
+        # 计算指定迭代次数的AUC
         areas_at = np.trapz(coverages_at, axis=1) / max_area
         efficiences_at[technique] = areas_at.tolist()
 
@@ -197,6 +228,7 @@ if __name__ == "__main__":
             len(coverages_over_time)
         )
 
+        # 选择覆盖率数据格式
         if raw_coverage_targets:
             coverages[technique] = techniques[technique]["global_raw_coverages"]
         else:
@@ -207,6 +239,7 @@ if __name__ == "__main__":
         avg_execution_times[technique] = techniques[technique]["avg_execution_times"]
         avg_generation_times[technique] = techniques[technique]["avg_generation_times"]
 
+        # 绘制平均覆盖率和置信区间
         plt.plot(mean_coverage, label=technique, linewidth=line_width)
         plt.fill_between(
             range(len(mean_coverage)),
@@ -230,6 +263,7 @@ if __name__ == "__main__":
         os.path.join(analysis_dir, f"coverage_over_time_{vs}.svg"), bbox_inches="tight"
     )
 
+    # 绘制放大的覆盖率图
     if plot_coverage_zoom:
         plt.figure(figsize=fig_size)
         plt.rcParams["font.size"] = font_size
@@ -289,6 +323,7 @@ if __name__ == "__main__":
             bbox_inches="tight",
         )
 
+    # 绘制测试长度随时间变化图
     plt.figure(figsize=fig_size)
     plt.rcParams["font.size"] = font_size
     plt.rcParams["font.weight"] = "bold"
@@ -299,15 +334,9 @@ if __name__ == "__main__":
 
             lengths_over_time[i] = lengths_over_time[i][:min_length]
 
-            # lengths_over_time[i] = np.pad(
-            #     lengths_over_time[i],
-            #     (0, max_length - len(lengths_over_time[i])),
-            #     mode="symmetric",
-            # )
-
             kernel = np.ones(window_size) / window_size
 
-            # # smoothing over a window of window_size
+            # 使用卷积进行平滑处理
             lengths_over_time[i] = np.convolve(
                 lengths_over_time[i],
                 kernel,
@@ -340,6 +369,7 @@ if __name__ == "__main__":
         bbox_inches="tight",
     )
 
+    # 创建Excel工作簿存储指标数据
     workbook = Workbook()
     workbook.remove(workbook.active)
     rqs_sheet = workbook.create_sheet("RQs")
@@ -351,6 +381,7 @@ if __name__ == "__main__":
     rqs_sheet["A1"] = app_name
     other_metrics_sheet["A1"] = app_name
 
+    # 排序技术列表，基线方法排在最前面
     list_keys_techniques = list(techniques.keys())
     assert (
         BASELINE in list_keys_techniques
@@ -362,6 +393,7 @@ if __name__ == "__main__":
     j = 0
     k = 0
 
+    # 计算并记录各种指标
     for i, technique in enumerate(list_keys_techniques):
 
         mean_coverage = np.mean(coverages[technique])
@@ -405,6 +437,7 @@ if __name__ == "__main__":
 
         assert len(letters) > k + 3, "Too many techniques to display"
 
+        # 计算其他指标
         mean_num_tests = np.mean(num_tests[technique])
         std_num_tests = np.std(num_tests[technique])
         logger.info(
@@ -468,6 +501,7 @@ if __name__ == "__main__":
 
     workbook.save(filename=os.path.join(analysis_dir, "table_metrics.xlsx"))
 
+    # 创建统计分析的工作表
     workbook = Workbook()
     workbook.remove(workbook.active)
     coverage_sheet = workbook.create_sheet("Coverage")
@@ -481,6 +515,7 @@ if __name__ == "__main__":
 
     logger.info("=" * 5 + " Statistical Analysis " + "=" * 5)
 
+    # 执行统计显著性分析
     for i in range(len(list_keys_techniques)):
         technique1 = list_keys_techniques[i]
         if i != len(list_keys_techniques) - 1:
@@ -497,6 +532,7 @@ if __name__ == "__main__":
 
             logger.info(f"* {technique1} vs {technique2} *")
 
+            # 覆盖率统计检验
             p_value = wilcoxon_unpaired_pvalue(
                 a=coverages[technique1], b=coverages[technique2]
             )
@@ -511,6 +547,7 @@ if __name__ == "__main__":
                 )
                 p_value_effect_size_coverage += f"_({estimate:.2f} {magnitude})"
 
+            # 效率统计检验
             p_value = wilcoxon_unpaired_pvalue(
                 a=efficiencies[technique1], b=efficiencies[technique2]
             )
@@ -527,6 +564,7 @@ if __name__ == "__main__":
                 )
                 p_value_effect_size_efficiency += f"_({estimate:.2f} {magnitude})"
 
+            # 指定迭代次数的效率统计检验
             p_value = wilcoxon_unpaired_pvalue(
                 a=efficiences_at[technique1], b=efficiences_at[technique2]
             )
@@ -543,17 +581,13 @@ if __name__ == "__main__":
                 )
                 p_value_effect_size_efficiency_at += f"_({estimate:.2f} {magnitude})"
 
-            coverage_sheet[f"{letters[j - 1]}{i + 2}"] = (
-                f"{p_value_effect_size_coverage}"
-            )
-            efficiency_sheet[f"{letters[j - 1]}{i + 2}"] = (
-                f"{p_value_effect_size_efficiency}"
-            )
-            efficiency_at_sheet[f"{letters[j - 1]}{i + 2}"] = (
-                f"{p_value_effect_size_efficiency_at}"
-            )
+            # 将统计结果写入Excel
+            coverage_sheet[f"{letters[j - 1]}{i + 2}"] = p_value_effect_size_coverage
+            efficiency_sheet[f"{letters[j - 1]}{i + 2}"] = p_value_effect_size_efficiency
+            efficiency_at_sheet[f"{letters[j - 1]}{i + 2}"] = p_value_effect_size_efficiency_at
 
             if i < len(list(techniques.keys())) - 1:
                 logger.info("-" * 10)
 
-    workbook.save(filename=os.path.join(analysis_dir, "table_metrics_statistics.xlsx"))
+    # 保存统计分析结果
+    workbook.save(filename=os.path.join(analysis_dir, "table_statistics.xlsx"))

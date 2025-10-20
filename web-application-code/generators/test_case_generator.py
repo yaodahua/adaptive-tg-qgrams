@@ -10,6 +10,8 @@ from config import (
     GENERATOR_NAMES,
     LENGTH_GENERATOR_NAME,
     QGRAMS_GENERATOR_NAME,
+    SIMIDF_GENERATOR_NAME,
+    TFIDF_GENERATOR_NAME,
 )
 from executors.coverage_target import CoverageTarget
 from global_log import GlobalLog
@@ -346,6 +348,21 @@ class TestCaseGenerator(ABC):
                         num_candidates=num_candidates,
                     )
                 if generator_name == QGRAMS_GENERATOR_NAME:
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                        q=q,
+                    )
+                if generator_name == SIMIDF_GENERATOR_NAME:
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                    )
+                if generator_name == TFIDF_GENERATOR_NAME:
                     return cls(
                         app_name=app_name,
                         class_variable_name=class_variable_name,

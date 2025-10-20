@@ -3,7 +3,7 @@ from executors.executor import Executor
 
 from global_log import GlobalLog
 
-
+# PagekitExecutor 执行器 用于执行 Pagekit 应用
 class PagekitExecutor(Executor):
 
     def __init__(self):

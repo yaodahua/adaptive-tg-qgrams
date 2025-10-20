@@ -24,7 +24,7 @@ class Individual:
         return [statement.to_string() for statement in self.statements]
 
     @staticmethod
-    def parse_statement_strings(statement_strings: List[str]) -> "Individual":
+    def parse_statement_strings(statement_strings: List[str]) -> "Individual": # 从字符串列表解析语句
         return Individual(
             statements=[
                 Statement.from_string(statement_string)

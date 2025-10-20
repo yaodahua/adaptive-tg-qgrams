@@ -51,7 +51,7 @@ def random_gen(test_gen_budget=100000, stop_at_failure=False, delay=False, max_l
 # 中文注释：基于距离的自适应随机测试
 def ART_dist(
     test_gen_budget=100,
-    W_sample_size=10,
+    W_sample_size=10, #候选测试用例集合的大小，默认10，在simulation实验里所有art策略都使用10
     stop_at_failure=False,
     delay=False,
     max_len=100,
@@ -98,7 +98,7 @@ def bigram_count(dict, s):
 # 中文注释：基于二元组频率的自适应随机测试
 def ART_bigram(
     test_gen_budget=100,
-    W_sample_size=10,
+    W_sample_size=10, 
     stop_at_failure=False,
     delay=False,
     max_len=100,

@@ -4,19 +4,21 @@ import time
 
 from global_log import GlobalLog
 
-
+# DimeshiftExecutor 执行器 用于执行 Dimeshift 应用
 class DimeshiftExecutor(Executor):
 
     def __init__(self):
         super().__init__(app_name=DIMESHIFT_NAME)
         self.logger = GlobalLog("DimeshiftExecutor")
 
+    # 启动 Dimeshift 应用容器
     def _start_application_container(
         self, network_name: str, container_name: str
     ) -> None:
 
         self.logger.debug(f"Starting container {container_name}")
 
+        # 定义容器健康检查
         healthcheck = {
             "test": "curl -f http://localhost:8080",
             "interval": 1 * 10**9,
@@ -42,12 +44,12 @@ class DimeshiftExecutor(Executor):
             container=container_name, aliases=[self.app_name]
         )
 
-
+#
 if __name__ == "__main__":
     executor = DimeshiftExecutor()
     network_name = executor.start_containers()
     chrome_container_name = None
-
+    # 启动 Chrome 容器
     for i in range(5):
 
         try:
