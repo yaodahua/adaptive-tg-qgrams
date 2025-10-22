@@ -83,6 +83,7 @@ ls -l /home/wlsju/adaptive-tg-qgrams/web-application-code/apps/dimeshift/run_mai
 ```bash
 conda activate webtestgen
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 60 --strategy random
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy qgrams
 ```
 
 
@@ -128,6 +129,7 @@ bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 288
 ```bash
 conda activate webtestgen
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 60 --strategy random
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy qgrams
 ```
 
 这个测试只运行2分钟，使用随机策略，适合快速验证环境。

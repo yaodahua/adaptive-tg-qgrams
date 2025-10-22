@@ -86,7 +86,7 @@ args.add_argument(
 )
 args.add_argument(
     "--diversity-strategy",  # 多样性策略
-    help=f"Number of candidates for generators {DISTANCE_GENERATOR_NAME} and {QGRAMS_GENERATOR_NAME}",
+    help=f"Number of candidates for generators {DISTANCE_GENERATOR_NAME}, {QGRAMS_GENERATOR_NAME} and {SIMIDF_GENERATOR_NAME}",
     type=str,
     choices=DIVERSITY_STRATEGY_NAMES,
     default=SEQUENCE_DIVERSITY_STRATEGY_NAME,
@@ -490,6 +490,7 @@ if __name__ == "__main__":
         if (
             generator_name == DISTANCE_GENERATOR_NAME
             or generator_name == QGRAMS_GENERATOR_NAME
+            or generator_name == SIMIDF_GENERATOR_NAME
         ):
             result_json["num_candidates"] = num_candidates
             result_json["diversity_strategy"] = diversity_strategy
