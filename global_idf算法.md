@@ -1,5 +1,3 @@
-
-
 ---
 
 ## 一、核心思想
@@ -13,9 +11,11 @@
 ## 二、核心算法
 
 ### 算法框架
+
 1. **维护三个核心结构**：
+
    - `doc_freq`: 2-gram → 包含该 gram 的文档数
-   - `global_tf_vector`: 2-gram → 平均 TF 值  
+   - `global_tf_vector`: 2-gram → 平均 TF 值
    - `total_tests`: 总测试用例数
 
 2. **增量更新**：新测试加入时，更新文档频率和平均 TF
@@ -31,84 +31,85 @@
 ```
 CLASS TrueIDFART:
   // 数据结构
-  doc_freq: HASHMAP[gram -> count]       // 文档频率
-  global_tf_vector: HASHMAP[gram -> tf]  // 全局平均TF
+  doc_freq: HASHMAP[gram -> count]       // 文档频率 - 记录每个gram在多少个测试中出现过
+  global_tf_vector: HASHMAP[gram -> tf]  // 全局平均TF向量 - 每个gram的平均词频
   total_tests: INT = 0                   // 总测试数
   archive: LIST = []                     // 测试存档
-  
+
   // 主算法
   FUNCTION main(time_budget, candidate_size=10):
     initial_test = generate_random_test()
     execute_test(initial_test)
     update_structures(initial_test)
-    
+
     WHILE within_budget(time_budget):
       candidates = generate_candidates(candidate_size)
       best_candidate = None
       best_diversity = -1
-      
+
       FOR EACH candidate IN candidates:
         diversity = diversity_score(candidate)
         IF diversity > best_diversity:
           best_diversity = diversity
           best_candidate = candidate
-      
+
       execute_test(best_candidate)
       update_structures(best_candidate)
-  
+
   // 更新文档频率和全局TF
   FUNCTION update_structures(test):
     grams = extract_2grams(test)
     unique_grams = SET(grams)  // 去重，每个文档只计一次
-    
+
     // 更新文档频率
     FOR EACH gram IN unique_grams:
-      doc_freq[gram] = doc_freq.get(gram, 0) + 1
+      doc_freq[gram] = doc_freq.get(gram, 0) + 1 // 每个gram在当前文档中出现，文档频率+1
 
     // 更新全局TF（滑动平均）
-    local_tf = compute_tf(grams)
-    FOR EACH gram, tf_val IN local_tf:
-      current_tf = global_tf_vector.get(gram, 0)
+    local_tf = compute_tf(grams)  // 计算当前加入的测试的gram的词频
+    FOR EACH gram, tf_val IN local_tf: // 遍历当前加入的测试的gram的词频
+      current_tf = global_tf_vector.get(gram, 0) // 获取当前gram的tf值，若不存在则为0
       new_tf = (current_tf * total_tests + tf_val) / (total_tests + 1)
+      //新tf = （当前tf * 当前文档数 + 新加入的gram的tf）/ （当前文档数 + 1）
       global_tf_vector[gram] = new_tf
-    
+
     total_tests += 1
     archive.append(test)
 
-  
+
   // 多样性评分
   FUNCTION diversity_score(candidate):
-    candidate_vector = compute_tfidf_vector(candidate)
+    candidate_vector = compute_tfidf_vector(candidate) // 计算当前加入的测试的gram的tf-idf值
     global_vector = get_global_tfidf_vector()
     similarity = cosine_similarity(candidate_vector, global_vector)
-    RETURN 1.0 - similarity  // 返回距离
-  
+    RETURN 1.0 - similarity  // 返回距离: 距离越大表示多样性越好
+
   // 计算TF-IDF向量
   FUNCTION compute_tfidf_vector(test):
     grams = extract_2grams(test)
     local_tf = compute_tf(grams)
     tfidf_vector = {}
-    
-    FOR EACH gram, tf_val IN local_tf:
+
+    FOR EACH gram, tf_val IN local_tf: // 遍历当前测试的gram的词频,计算每个gram的tf-idf值
       df = doc_freq.get(gram, 0)
       idf = log((total_tests + 1) / (df + 0.5))  // 平滑IDF
       tfidf_vector[gram] = tf_val * idf
-    
+
     RETURN tfidf_vector
-  
+
   //计算词频
   FUNCTION compute_tf(grams):
     tf = {}
     total = LENGTH(grams)
-    
+
     IF total == 0:
       RETURN tf
-    
-    FOR EACH gram IN grams:
+
+    FOR EACH gram IN grams:  // 遍历当前测试里的每个gram的词频
       tf[gram] = tf.get(gram, 0) + 1.0 / total
-    
+
     RETURN tf
-  
+
 
   // 获取全局聚合TF-IDF向量
   FUNCTION get_global_tfidf_vector():
@@ -118,21 +119,21 @@ CLASS TrueIDFART:
       idf = log((total_tests + 1) / (df + 0.5))
       global_tfidf[gram] = avg_tf * idf
     RETURN global_tfidf
-  
+
   // 余弦相似度
   FUNCTION cosine_similarity(vec1, vec2):
     dot_product = 0
     norm1 = 0
     norm2 = 0
-    
-    FOR EACH gram, val1 IN vec1:
+
+    FOR EACH gram, val1 IN vec1: 
       val2 = vec2.get(gram, 0)
-      dot_product += val1 * val2
+      dot_product += val1 * val2  // 计算点积，点积只有在vec1和vec2都有该gram时才会有值
       norm1 += val1 * val1
-    
+
     FOR EACH val2 IN vec2.values():
       norm2 += val2 * val2
-    
+
     IF norm1 == 0 OR norm2 == 0:
       RETURN 0
     RETURN dot_product / (sqrt(norm1) * sqrt(norm2))
@@ -153,57 +154,57 @@ class TrueIDFART:
         self.global_tf_vector = defaultdict(float)  # 全局平均TF
         self.total_tests = 0
         self.archive = []
-    
+
     def extract_2grams(self, text):
         """提取2-grams，这里以字符串为例"""
         if len(text) < 2:
             return []
         return [text[i:i+2] for i in range(len(text) - 1)]
-    
+
     def compute_tf(self, grams):
         """计算词频"""
         tf = defaultdict(float)
         total = len(grams)
         if total == 0:
             return tf
-        
+
         for gram in grams:
             tf[gram] += 1.0 / total
         return tf
-    
+
     def update_structures(self, test):
         """更新文档频率和全局TF向量"""
         grams = self.extract_2grams(test)
         unique_grams = set(grams)  # 每个文档中每个gram只计一次
-        
+
         # 更新文档频率
         for gram in unique_grams:
             self.doc_freq[gram] += 1
-        
+
         # 更新全局TF向量（滑动平均）
         local_tf = self.compute_tf(grams)
         for gram, tf_val in local_tf.items():
             current_tf = self.global_tf_vector[gram]
             new_tf = (current_tf * self.total_tests + tf_val) / (self.total_tests + 1)
             self.global_tf_vector[gram] = new_tf
-        
+
         self.total_tests += 1
         self.archive.append(test)
-    
+
     def compute_tfidf_vector(self, test):
         """计算测试用例的TF-IDF向量"""
         grams = self.extract_2grams(test)
         local_tf = self.compute_tf(grams)
         tfidf_vector = {}
-        
+
         for gram, tf_val in local_tf.items():
             df = self.doc_freq.get(gram, 0)
             # 平滑IDF计算，避免除零
             idf = math.log((self.total_tests + 1) / (df + 0.5))
             tfidf_vector[gram] = tf_val * idf
-        
+
         return tfidf_vector
-    
+
     def get_global_tfidf_vector(self):
         """获取全局聚合TF-IDF向量"""
         global_tfidf = {}
@@ -212,46 +213,46 @@ class TrueIDFART:
             idf = math.log((self.total_tests + 1) / (df + 0.5))
             global_tfidf[gram] = avg_tf * idf
         return global_tfidf
-    
+
     def cosine_similarity(self, vec1, vec2):
         """计算两个稀疏向量的余弦相似度"""
         dot_product = 0.0
         norm1 = 0.0
         norm2 = 0.0
-        
+
         # 计算点积和vec1的范数
         for gram, val1 in vec1.items():
             val2 = vec2.get(gram, 0.0)
             dot_product += val1 * val2
             norm1 += val1 * val1
-        
+
         # 计算vec2的范数
         for val2 in vec2.values():
             norm2 += val2 * val2
-        
+
         if norm1 == 0 or norm2 == 0:
             return 0.0
-        
+
         return dot_product / (math.sqrt(norm1) * math.sqrt(norm2))
-    
+
     def diversity_score(self, candidate):
         """计算候选测试用例的多样性分数"""
         candidate_vector = self.compute_tfidf_vector(candidate)
         global_vector = self.get_global_tfidf_vector()
-        
+
         similarity = self.cosine_similarity(candidate_vector, global_vector)
         return 1.0 - similarity  # 返回距离，越大越多样
-    
+
     def generate_random_test(self, length=10):
         """生成随机测试用例（这里用随机字符串模拟）"""
         chars = 'abcdefghijklmnopqrstuvwxyz'
         return ''.join(random.choice(chars) for _ in range(length))
-    
+
     def execute_test(self, test):
         """执行测试用例（这里只是模拟）"""
         # 在实际应用中，这里会真正执行测试并收集覆盖信息
         pass
-    
+
     def run_art(self, max_iterations=100, candidate_size=10):
         """运行ART算法"""
         # 初始化：执行第一个随机测试
@@ -259,31 +260,31 @@ class TrueIDFART:
         initial_test = self.generate_random_test()
         self.execute_test(initial_test)
         self.update_structures(initial_test)
-        
+
         for iteration in range(max_iterations):
             # 生成候选集
             candidates = [self.generate_random_test() for _ in range(candidate_size)]
-            
+
             # 选择最多样的候选
             best_candidate = None
             best_diversity = -1
-            
+
             for candidate in candidates:
                 diversity = self.diversity_score(candidate)
                 if diversity > best_diversity:
                     best_diversity = diversity
                     best_candidate = candidate
-            
+
             # 执行最佳候选
             self.execute_test(best_candidate)
             self.update_structures(best_candidate)
-            
+
             if (iteration + 1) % 20 == 0:
                 print(f"Iteration {iteration + 1}: "
                       f"total_tests={self.total_tests}, "
                       f"vocab_size={len(self.global_tf_vector)}, "
                       f"diversity={best_diversity:.4f}")
-        
+
         print(f"Completed: {self.total_tests} tests executed, "
               f"{len(self.global_tf_vector)} unique 2-grams discovered")
 
