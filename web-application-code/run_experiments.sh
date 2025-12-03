@@ -248,8 +248,8 @@ elif [[ $diversity_strategy == "simidf_all" ]]; then #simidf的sequence和input�
 elif [[ $strategy == "main_methods" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_simidf $app_name $i $budget sequence 
-        run_simidf $app_name $i $budget input 
         run_qgrams $app_name $i $budget sequence 
+        run_simidf $app_name $i $budget input
         run_qgrams $app_name $i $budget input 
     done
 else
