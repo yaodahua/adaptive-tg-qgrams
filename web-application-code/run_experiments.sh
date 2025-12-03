@@ -222,7 +222,7 @@ elif [[ $strategy == "qgrams" ]]; then #默认进行sequence的，input的需要
         run_qgrams $app_name $i $budget $diversity_strategy $resume_filepath
     done
 
-elif [[ $diversity_strategy == "qgrams_all" ]] #qgrams的sequence和input都进行
+elif [[ $diversity_strategy == "qgrams_all" ]]; then #qgrams的sequence和input都进行
     for i in $(seq 1 $num_repetitions); do
         run_qgrams $app_name $i $budget sequence $resume_filepath
         run_qgrams $app_name $i $budget input $resume_filepath
@@ -235,7 +235,7 @@ elif [[ $strategy == "simidf" ]]; then
         run_simidf $app_name $i $budget $diversity_strategy $resume_filepath
     done
 
-elif [[ $diversity_strategy == "simidf_all" ]] #simidf的sequence和input都进行
+elif [[ $diversity_strategy == "simidf_all" ]]; then #simidf的sequence和input都进行
     for i in $(seq 1 $num_repetitions); do
         run_simidf $app_name $i $budget sequence $resume_filepath
         run_simidf $app_name $i $budget input $resume_filepath
