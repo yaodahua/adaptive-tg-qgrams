@@ -488,6 +488,8 @@ if __name__ == "__main__":
     
     if not os.path.exists('results'):
         os.makedirs('results')
+    if ADD_DELAY and not os.path.exists('results_del'):
+        os.makedirs('results_del')
     #确保运行次数为非负整数
     assert runs_rand >= 0, "Number of runs for random generation must be non-negative"
     assert runs_dist >= 0, "Number of runs for ART_dist must be non-negative"
@@ -500,15 +502,20 @@ if __name__ == "__main__":
         DELAY_SUFFIX = "_del"  # '_del' when delay is true; '' otherwise
     
     #中文注释：显示当前计算项目
-    print("===== Computing p-measure =====")
-    p_measure(
-        runs_rand=runs_rand,
-        runs_dist=runs_dist,
-        runs_bigrams=runs_bigrams,
-        runs_tfidf=runs_tfidf,
-        runs_simidf=runs_simidf,
-        max_len=MAX_STR_LENGTH,
-    )
+    # 在delay情况下跳过pmeasure的计算
+    if not ADD_DELAY:
+        print("===== Computing p-measure =====")
+        p_measure(
+            runs_rand=runs_rand,
+            runs_dist=runs_dist,
+            runs_bigrams=runs_bigrams,
+            runs_tfidf=runs_tfidf,
+            runs_simidf=runs_simidf,
+            max_len=MAX_STR_LENGTH,
+        )
+    else:
+        print("===== 跳过p-measure计算（delay模式） =====")
+    
     print("===== Computing f-measure and t-measure =====")
     f_t_measure(
         runs_rand=runs_rand,
@@ -520,7 +527,10 @@ if __name__ == "__main__":
         max_len=MAX_STR_LENGTH,
     )
     print("===== 完成 =====")
-    print("结果保存/results")
+    if ADD_DELAY:
+        print("结果保存/results_del")
+    else:
+        print("结果保存/results")
 
     #中文注释：写入统计结果
     utils.write_summary_statistics(delay=ADD_DELAY) # 写入统计结果

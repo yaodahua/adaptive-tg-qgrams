@@ -86,6 +86,7 @@ bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 60 
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy qgrams
 ```
 
+所有app-name：dimeshift, pagekit, petclinic, phoenix, retroboard, splittypie
 
 以下命令会运行所有测试策略（random、distance、qgrams_sequence、qgrams_input），针对dimeshift应用，重复1次，总时间预算为28800秒（8小时）：
 
@@ -101,6 +102,9 @@ bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 288
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 28800 --strategy qgrams --diversity-strategy sequence
 #运行q-gram输入策略
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 28800 --strategy qgrams --diversity-strategy input
+#运行主要对比策略qgrams和simidf，sequence和input都对比
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 3 --budget 28800 --strategy main_methods
+
 ```
 
 ### 2.2 系统架构说明

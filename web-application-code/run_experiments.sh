@@ -193,8 +193,6 @@ if [[ $strategy == "all" ]]; then
         run_qgrams $app_name $i $budget input 
         run_simidf $app_name $i $budget sequence 
         run_simidf $app_name $i $budget input 
-        run_tfidf $app_name $i $budget sequence 
-        run_tfidf $app_name $i $budget input 
     done
 elif [[ $strategy == "all_but_random" ]]; then
     for i in $(seq 1 $num_repetitions); do
@@ -203,9 +201,14 @@ elif [[ $strategy == "all_but_random" ]]; then
         run_qgrams $app_name $i $budget input 
         run_simidf $app_name $i $budget sequence 
         run_simidf $app_name $i $budget input 
-        run_tfidf $app_name $i $budget sequence 
-        run_tfidf $app_name $i $budget input 
     done
+
+elif [[ $strategy == "ran_dist" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_random $app_name $i $budget 
+        run_distance $app_name $i $budget sequence 
+    done
+
 elif [[ $strategy == "random" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_random $app_name $i $budget $resume_filepath
@@ -214,24 +217,40 @@ elif [[ $strategy == "distance" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_distance $app_name $i $budget $diversity_strategy $resume_filepath
     done
-elif [[ $strategy == "qgrams" ]]; then
+elif [[ $strategy == "qgrams" ]]; then #默认进行sequence的，input的需要指定--diversity-strategy input
     for i in $(seq 1 $num_repetitions); do
         run_qgrams $app_name $i $budget $diversity_strategy $resume_filepath
     done
+
+elif [[ $diversity_strategy == "qgrams_all" ]] #qgrams的sequence和input都进行
+    for i in $(seq 1 $num_repetitions); do
+        run_qgrams $app_name $i $budget sequence $resume_filepath
+        run_qgrams $app_name $i $budget input $resume_filepath
+    done
+
+
+
 elif [[ $strategy == "simidf" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_simidf $app_name $i $budget $diversity_strategy $resume_filepath
     done
-elif [[ $strategy == "tfidf" ]]; then
+
+elif [[ $diversity_strategy == "simidf_all" ]] #simidf的sequence和input都进行
     for i in $(seq 1 $num_repetitions); do
-        run_tfidf $app_name $i $budget $diversity_strategy $resume_filepath
+        run_simidf $app_name $i $budget sequence $resume_filepath
+        run_simidf $app_name $i $budget input $resume_filepath
     done
-elif [[ $strategy == "new_methods" ]]; then
+
+# elif [[ $strategy == "tfidf" ]]; then
+#     for i in $(seq 1 $num_repetitions); do
+#         run_tfidf $app_name $i $budget $diversity_strategy $resume_filepath
+#     done
+elif [[ $strategy == "main_methods" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_simidf $app_name $i $budget sequence 
         run_simidf $app_name $i $budget input 
-        run_tfidf $app_name $i $budget sequence 
-        run_tfidf $app_name $i $budget input 
+        run_qgrams $app_name $i $budget sequence 
+        run_qgrams $app_name $i $budget input 
     done
 else
     echo "Invalid strategy: " $strategy

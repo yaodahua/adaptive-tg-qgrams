@@ -135,4 +135,5 @@ src/main/resources/log4j.properties
 .vagrant/
 Main.java
 *results*/
+*simu-sh*/
 *.tar.gz
