@@ -22,6 +22,7 @@ from config import (
     DIMESHIFT_NAME,
     DISTANCE_GENERATOR_NAME,
     GENERATOR_NAMES,
+    JSART_GENERATOR_NAME,
     LENGTH_GENERATOR_NAME,
     QGRAMS_GENERATOR_NAME,
     SIMIDF_GENERATOR_NAME,
@@ -470,6 +471,14 @@ class TestCaseGenerator(ABC):
                         diversity_strategy=diversity_strategy,
                     )
                 if generator_name == TFIDF_GENERATOR_NAME:
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                        q=q,
+                    )
+                if generator_name == JSART_GENERATOR_NAME:
                     return cls(
                         app_name=app_name,
                         class_variable_name=class_variable_name,

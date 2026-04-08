@@ -105,6 +105,10 @@ bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 288
 #运行主要对比策略qgrams和simidf，sequence和input都对比
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 3 --budget 28800 --strategy main_methods
 
+#运行jsart策略
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 3 --budget 28800 --strategy jsart --diversity-strategy sequence
+#运行jsart输入策略
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 3 --budget 28800 --strategy jsart --diversity-strategy input
 ```
 
 ### 2.2 系统架构说明
@@ -134,6 +138,10 @@ bash -i run_experiments.sh --app-name dimeshift --num-repetitions 3 --budget 288
 conda activate webtestgen
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 60 --strategy random
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy qgrams
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy jsart
+
+#快速运行所有jsart策略
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy jsart_all
 ```
 
 这个测试只运行2分钟，使用随机策略，适合快速验证环境。

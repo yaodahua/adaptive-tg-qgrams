@@ -10,10 +10,10 @@ DELAY_SECS = 0.01  # 10ms delay
 def is_palindrom(s: str, delay=False):
     if delay:
         time.sleep(DELAY_SECS)
-    if s == "" or len(s) == 1:
+    if s == "" or len(s) == 1:# 空字符串或单字符均为回文
         return True
-    while len(s) > 1 and s[0] == s[-1]:
-        s = s[1 : len(s) - 1]
+    while len(s) > 1 and s[0] == s[-1]:# 收缩：从首尾向中间遍历，若首尾字符相同则继续比较内部子字符串
+        s = s[1 : len(s) - 1]# 移除首尾字符
     if s == "" or len(s) == 1:
         return True
     return False
@@ -23,9 +23,9 @@ def is_palindrom(s: str, delay=False):
 def is_palindrom_mu1(s: str):
     if s == "" or len(s) == 1:
         return True
-    while len(s) > 1 and s[0] == s[-1]:
-        s = s[1 : len(s) - 1]
-    if s == "" or len(s) == 2:  # was: len(s) == 1
+    while len(s) > 1 and s[0] == s[-1]:# 收缩：从首尾向中间遍历，若首尾字符相同则继续比较内部子字符串
+        s = s[1 : len(s) - 1]# 移除首尾字符
+    if s == "" or len(s) == 2:  
         return True
     return False
 

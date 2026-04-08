@@ -141,7 +141,7 @@ def write_summary_statistics(delay=False, is_triangle=False):
     
     # 检查哪些生成方法有数据文件
     available_methods = []
-    for gen in ["rand", "dist", "bigrams", "tfidf", "simidf", "js"]:
+    for gen in ["rand", "dist", "bigrams", "tfidf", "simidf"]:
         # 检查是否有任意长度的P-measure文件存在
         for ll in lengths:
             p_filename = f"results{triangle_dir}{del_dir}/P_measure_{gen}_{ll}.csv"
@@ -339,33 +339,3 @@ def compare_F_T_meas(csv_file1, csv_file2):
         return 1.0, 1.0  # 返回p-value=1.0表示无差异
     
     return ranksums(f1, f2).pvalue, ranksums(t1, t2).pvalue
-
-
-# def write_length_results(lengths_data, gen, length, delay=False, is_triangle=False):
-#     """保存测试用例长度数据到CSV文件"""
-#     triangle_dir = ""
-#     if is_triangle:
-#         triangle_dir = "_tr"
-#     del_dir = ""
-#     if delay:
-#         del_dir = "_del"
-    
-#     # 创建results_length文件夹
-#     results_dir = f"results_length{triangle_dir}{del_dir}"
-#     os.makedirs(results_dir, exist_ok=True)
-    
-#     filename = f"{results_dir}/{gen}_length_{length}.csv"
-#     mode = "w"
-#     i = 0
-#     if os.path.isfile(filename):
-#         mode = "a"
-#         with open(filename, "r") as fr:
-#             i = len(fr.readlines()) - 1
-    
-#     with open(filename, mode) as fw:
-#         if mode == "w":
-#             fw.write("Run,Avg_Length\n")
-#         i += 1
-#         for avg_length in lengths_data:
-#             fw.write(f"{i},{avg_length}\n")
-#             i += 1

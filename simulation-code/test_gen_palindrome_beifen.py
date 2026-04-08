@@ -8,10 +8,23 @@ import argparse
 import os
 import incr_entropy
 import tfidf_2grams
+import simidf_art
 
 '''
-主要用来对比tfidf_2grams和bigram的区别
+使用示例：
+参数说明：
+--test-gen-budget 测试用例生成预算,默认100
+--stop-at-failure 是否在发现故障时停止,测试默认False
+--delay 是否引入延迟,默认False
+--max-len 最大字符串长度,默认100
+--runs-simidf 1000 (方法可替换为其他值、例如: tfidf、bigrams、rand、dist,后面的1000是重复次数)
+
+使用方法：
+python test_gen_palindrome.py --max-string-length 100 --runs-simidf 1000 --runs-tfidf 1000 --runs-bigrams 1000
+
 '''
+
+
 
 def random_string(max_len=100, start_char=97, end_char=122):
     length = random.randint(0, max_len)
@@ -38,7 +51,7 @@ def random_gen(test_gen_budget=100000, stop_at_failure=False, delay=False, max_l
 # 中文注释：基于距离的自适应随机测试
 def ART_dist(
     test_gen_budget=100,
-    W_sample_size=10,
+    W_sample_size=10, #候选测试用例集合的大小，默认10，在simulation实验里所有art策略都使用10
     stop_at_failure=False,
     delay=False,
     max_len=100,
@@ -85,7 +98,7 @@ def bigram_count(dict, s):
 # 中文注释：基于二元组频率的自适应随机测试
 def ART_bigram(
     test_gen_budget=100,
-    W_sample_size=10,
+    W_sample_size=10, 
     stop_at_failure=False,
     delay=False,
     max_len=100,
@@ -180,86 +193,63 @@ def ART_tfidf(
     
     return f / test_gen_budget
 
-def generate_comprehensive_comparison_report(max_len, delay, p_val_p, p_val_f, p_val_t):
-    """生成TF-IDF vs Bigram综合对比报告"""
-    delay_suffix = "_del" if delay else ""
+# 中文注释：基于SimIDF的自适应随机测试
+def ART_simidf(
+    test_gen_budget=100,
+    W_sample_size=10,
+    stop_at_failure=False,
+    delay=False,
+    max_len=100,
+):
+    """使用SimIDF算法(基于文档频率的TF-IDF)的自适应随机测试"""
+    if stop_at_failure:
+        start = time.time()
     
-    # 读取F/T-measure对比结果
-    f_t_filename = f"tf_vs_bi_result/f_t_comparison_{max_len}{delay_suffix}.txt"
-    p_filename = f"tf_vs_bi_result/p_comparison_{max_len}{delay_suffix}.txt"
-    stats_filename = f"tf_vs_bi_result/statistical_analysis_{max_len}{delay_suffix}.txt"
+    # 重置SimIDF算法状态
+    simidf_art.simidf_art.reset()
     
-    # 读取各个文件的内容
-    f_t_content = ""
-    p_content = ""
-    stats_content = ""
+    # 初始化：执行第一个随机测试
+    s = random_string(max_len)
+    simidf_art.simidf_art.update_structures(s)
     
-    try:
-        with open(f_t_filename, 'r') as f:
-            f_t_content = f.read()
-    except FileNotFoundError:
-        f_t_content = "F/T-measure对比结果文件不存在\n"
+    n = 1
+    f = 0.0
+    if is_palindrome.is_palindrom(s, delay) != is_palindrome.is_palindrom_mu1(s):
+        f += 1.0
+        if stop_at_failure:
+            return (n, time.time() - start)
     
-    try:
-        with open(p_filename, 'r') as f:
-            p_content = f.read()
-    except FileNotFoundError:
-        p_content = "P-measure对比结果文件不存在\n"
+    while n < test_gen_budget or stop_at_failure:
+        W = []
+        W_diversity = []
+        
+        # 生成候选集
+        for i in range(W_sample_size):
+            s = random_string(max_len)
+            # 计算多样性分数（与全局TF-IDF向量的距离）
+            diversity_score = simidf_art.simidf_art.diversity_score(s)
+            W.append(s)
+            W_diversity.append(diversity_score)
+        
+        # 选择多样性分数最高的候选（距离最大，即最不相似）
+        s_exec = W[np.argmax(W_diversity)]
+        n += 1
+        
+        if is_palindrome.is_palindrom(s_exec, delay) != is_palindrome.is_palindrom_mu1(s_exec):
+            f += 1.0
+            if stop_at_failure:
+                return (n, time.time() - start)
+        
+        # 更新SimIDF算法结构
+        simidf_art.simidf_art.update_structures(s_exec)
     
-    try:
-        with open(stats_filename, 'r') as f:
-            stats_content = f.read()
-    except FileNotFoundError:
-        stats_content = "统计显著性检验结果文件不存在\n"
-    
-    # 生成综合报告
-    comprehensive_filename = f"tf_vs_bi_result/comprehensive_comparison_{max_len}{delay_suffix}.txt"
-    with open(comprehensive_filename, 'w') as f:
-        f.write("=== TF-IDF vs Bigram 综合对比报告 ===\n")
-        f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"最大字符串长度: {max_len}\n")
-        f.write(f"延迟设置: {delay}\n")
-        f.write("=" * 50 + "\n\n")
-        
-        f.write("1. F/T-measure 对比结果\n")
-        f.write("-" * 30 + "\n")
-        f.write(f_t_content)
-        f.write("\n")
-        
-        f.write("2. P-measure 对比结果\n")
-        f.write("-" * 30 + "\n")
-        f.write(p_content)
-        f.write("\n")
-        
-        f.write("3. 统计显著性检验结果\n")
-        f.write("-" * 30 + "\n")
-        f.write(stats_content)
-        f.write("\n")
-        
-        f.write("4. 综合结论\n")
-        f.write("-" * 30 + "\n")
-        
-        # 基于p-value给出综合结论
-        significant_metrics = []
-        if p_val_p < 0.05:
-            significant_metrics.append("P-measure")
-        if p_val_f < 0.05:
-            significant_metrics.append("F-measure")
-        if p_val_t < 0.05:
-            significant_metrics.append("T-measure")
-        
-        if significant_metrics:
-            f.write(f"TF-IDF与Bigram方法在{', '.join(significant_metrics)}指标上存在统计显著性差异。\n")
-        else:
-            f.write("TF-IDF与Bigram方法在所有指标上均无统计显著性差异。\n")
-        
-        f.write("\n建议：根据具体应用场景选择合适的测试生成方法。\n")
-    
-    print(f"综合对比报告已生成: {comprehensive_filename}")
+    return f / test_gen_budget
+
+
 
 # 中文注释：计算f-measure和t-measure
 def f_t_measure(
-    runs_rand=1000, runs_dist=10, runs_bigrams=100, runs_tfidf=100, delay=False, max_len=100
+    runs_rand=1000, runs_dist=10, runs_bigrams=100, runs_tfidf=100, runs_simidf=100, delay=False, max_len=100
 ):
     res_rand = []
     print(f'**** Running Rand ({runs_rand}) ****')
@@ -297,14 +287,26 @@ def f_t_measure(
         if (i+1) % 25 == 0:
             print(f"{i+1}/{runs_tfidf}")
     # res_tfidf = [ART_tfidf(stop_at_failure=True) for i in range(runs_tfidf)]
+    res_simidf = []
+    print(f'**** Running SimIDF ({runs_simidf}) ****')
+    for i in range(runs_simidf):
+        res_simidf.append(
+            ART_simidf(stop_at_failure=True, delay=delay, max_len=max_len)
+        )
+        #25轮才输出一次进度
+        if (i+1) % 25 == 0:
+            print(f"{i+1}/{runs_simidf}")
+    # res_simidf = [ART_simidf(stop_at_failure=True) for i in range(runs_simidf)]
     f_rand = 0 if runs_rand == 0 else np.mean([n for n, t in res_rand])
     f_dist = 0 if runs_dist == 0 else np.mean([n for n, t in res_dist])
     f_bigrams = 0 if runs_bigrams == 0 else np.mean([n for n, t in res_bigrams])
     f_tfidf = 0 if runs_tfidf == 0 else np.mean([n for n, t in res_tfidf])
+    f_simidf = 0 if runs_simidf == 0 else np.mean([n for n, t in res_simidf])
     t_rand = 0 if runs_rand == 0 else np.mean([t for n, t in res_rand])
     t_dist = 0 if runs_dist == 0 else np.mean([t for n, t in res_dist])
     t_bigrams = 0 if runs_bigrams == 0 else np.mean([t for n, t in res_bigrams])
     t_tfidf = 0 if runs_tfidf == 0 else np.mean([t for n, t in res_tfidf])
+    t_simidf = 0 if runs_simidf == 0 else np.mean([t for n, t in res_simidf])
     if runs_rand != 0:
         utils.write_f_t_results(res_rand, "rand", max_len, delay)
     if runs_dist != 0:
@@ -313,58 +315,10 @@ def f_t_measure(
         utils.write_f_t_results(res_bigrams, "bigrams", max_len, delay)
     if runs_tfidf != 0:
         utils.write_f_t_results(res_tfidf, "tfidf", max_len, delay)
+    if runs_simidf != 0:
+        utils.write_f_t_results(res_simidf, "simidf", max_len, delay)
     
-    # 添加TF-IDF vs Bigram性能对比输出
-    if runs_tfidf > 0 and runs_bigrams > 0:
-        print("=== TF-IDF vs Bigram 性能对比 ===")
-        print(f"F-measure对比: TF-IDF={f_tfidf:.6f} vs Bigram={f_bigrams:.6f}")
-        print(f"T-measure对比: TF-IDF={t_tfidf:.6f} vs Bigram={t_bigrams:.6f}")
-        print(f"F-measure差异: {f_tfidf - f_bigrams:.6f}")
-        print(f"T-measure差异: {t_tfidf - t_bigrams:.6f}")
-        
-        # 计算性能提升百分比
-        if f_bigrams > 0:
-            f_improvement = (f_tfidf - f_bigrams) / f_bigrams * 100
-            print(f"F-measure提升: {f_improvement:.2f}%")
-        
-        if t_bigrams > 0:
-            t_improvement = (t_tfidf - t_bigrams) / t_bigrams * 100
-            print(f"T-measure提升: {t_improvement:.2f}%")
-        
-        # 保存对比结果到专门文件夹
-        comparison_data = {
-            'max_len': max_len,
-            'delay': delay,
-            'tfidf_f': f_tfidf,
-            'bigram_f': f_bigrams,
-            'tfidf_t': t_tfidf,
-            'bigram_t': t_bigrams,
-            'f_improvement': f_improvement if f_bigrams > 0 else 0,
-            't_improvement': t_improvement if t_bigrams > 0 else 0
-        }
-        
-        # 保存到tf_vs_bi_result文件夹
-        delay_suffix = "_del" if delay else ""
-        comparison_filename = f"tf_vs_bi_result/f_t_comparison_{max_len}{delay_suffix}.txt"
-        with open(comparison_filename, 'w') as f:
-            f.write("=== TF-IDF vs Bigram F/T-measure 对比结果 ===\n")
-            f.write(f"最大字符串长度: {max_len}\n")
-            f.write(f"延迟设置: {delay}\n")
-            f.write(f"TF-IDF F-measure: {f_tfidf:.6f}\n")
-            f.write(f"Bigram F-measure: {f_bigrams:.6f}\n")
-            f.write(f"TF-IDF T-measure: {t_tfidf:.6f}\n")
-            f.write(f"Bigram T-measure: {t_bigrams:.6f}\n")
-            f.write(f"F-measure差异: {f_tfidf - f_bigrams:.6f}\n")
-            f.write(f"T-measure差异: {t_tfidf - t_bigrams:.6f}\n")
-            if f_bigrams > 0:
-                f.write(f"F-measure提升: {f_improvement:.2f}%\n")
-            if t_bigrams > 0:
-                f.write(f"T-measure提升: {t_improvement:.2f}%\n")
-        
-        print(f"对比结果已保存到: {comparison_filename}")
-        print()
-    
-    return ((f_rand, f_dist, f_bigrams, f_tfidf), (t_rand, t_dist, t_bigrams, t_tfidf))
+    return ((f_rand, f_dist, f_bigrams, f_tfidf, f_simidf), (t_rand, t_dist, t_bigrams, t_tfidf, t_simidf))
 
 # 中文注释：计算p-measure
 def p_measure(
@@ -372,6 +326,7 @@ def p_measure(
     runs_dist=10,
     runs_bigrams=100,
     runs_tfidf=100,
+    runs_simidf=100,
     tgen_budget=50,
     delay=False,
     max_len=100,
@@ -408,10 +363,19 @@ def p_measure(
         if (i+1) % 25 == 0:
             print(f"{i+1}/{runs_tfidf}")
     # res_tfidf = [ART_tfidf(test_gen_budget=tgen_budget) for i in range(runs_tfidf)]
+    res_simidf = []
+    print(f'**** Running SimIDF ({runs_simidf}) ****')
+    for i in range(runs_simidf):
+        res_simidf.append(ART_simidf(test_gen_budget=tgen_budget, max_len=max_len))
+        #25轮才输出一次进度
+        if (i+1) % 25 == 0:
+            print(f"{i+1}/{runs_simidf}")
+    # res_simidf = [ART_simidf(test_gen_budget=tgen_budget) for i in range(runs_simidf)]
     p_rand = 0 if runs_rand == 0 else np.mean(res_rand)
     p_dist = 0 if runs_dist == 0 else np.mean(res_dist)
     p_bigrams = 0 if runs_bigrams == 0 else np.mean(res_bigrams)
     p_tfidf = 0 if runs_tfidf == 0 else np.mean(res_tfidf)
+    p_simidf = 0 if runs_simidf == 0 else np.mean(res_simidf)
     if runs_rand != 0:
         utils.write_p_results(res_rand, "rand", max_len, delay)
     if runs_dist != 0:
@@ -420,44 +384,10 @@ def p_measure(
         utils.write_p_results(res_bigrams, "bigrams", max_len, delay)
     if runs_tfidf != 0:
         utils.write_p_results(res_tfidf, "tfidf", max_len, delay)
+    if runs_simidf != 0:
+        utils.write_p_results(res_simidf, "simidf", max_len, delay)
     
-    # 添加TF-IDF vs Bigram P-measure对比输出
-    if runs_tfidf > 0 and runs_bigrams > 0:
-        print("=== TF-IDF vs Bigram P-measure对比 ===")
-        print(f"P-measure对比: TF-IDF={p_tfidf:.6f} vs Bigram={p_bigrams:.6f}")
-        print(f"P-measure差异: {p_tfidf - p_bigrams:.6f}")
-        
-        # 计算性能提升百分比
-        if p_bigrams > 0:
-            p_improvement = (p_tfidf - p_bigrams) / p_bigrams * 100
-            print(f"P-measure提升: {p_improvement:.2f}%")
-        
-        # 保存对比结果到专门文件夹
-        comparison_data = {
-            'max_len': max_len,
-            'delay': delay,
-            'tfidf_p': p_tfidf,
-            'bigram_p': p_bigrams,
-            'p_improvement': p_improvement if p_bigrams > 0 else 0
-        }
-        
-        # 保存到tf_vs_bi_result文件夹
-        delay_suffix = "_del" if delay else ""
-        comparison_filename = f"tf_vs_bi_result/p_comparison_{max_len}{delay_suffix}.txt"
-        with open(comparison_filename, 'w') as f:
-            f.write("=== TF-IDF vs Bigram P-measure 对比结果 ===\n")
-            f.write(f"最大字符串长度: {max_len}\n")
-            f.write(f"延迟设置: {delay}\n")
-            f.write(f"TF-IDF P-measure: {p_tfidf:.6f}\n")
-            f.write(f"Bigram P-measure: {p_bigrams:.6f}\n")
-            f.write(f"P-measure差异: {p_tfidf - p_bigrams:.6f}\n")
-            if p_bigrams > 0:
-                f.write(f"P-measure提升: {p_improvement:.2f}%\n")
-        
-        print(f"对比结果已保存到: {comparison_filename}")
-        print()
-    
-    return (p_rand, p_dist, p_bigrams, p_tfidf)
+    return (p_rand, p_dist, p_bigrams, p_tfidf, p_simidf)
 
 # 中文注释：设置命令行参数解析
 args = argparse.ArgumentParser()
@@ -498,10 +428,23 @@ args.add_argument(
     type=int,
     default=100,
 )
+args.add_argument(
+    "--runs-simidf",
+    help="Number of runs for ART_simidf (SimIDF 2-grams)",
+    type=int,
+    default=100,
+)
+args.add_argument(
+    "--only-method",
+    help="Run only the specified method (rand, dist, bigrams, tfidf, simidf)",
+    type=str,
+    choices=['rand', 'dist', 'bigrams', 'tfidf', 'simidf'],
+    default=None,
+)
 #args, _ = args.parse_args()
 args = args.parse_args() 
 
-# python test_gen_palindrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100 --runs-tfidf 100
+# python test_gen_palindrome.py --max-string-length 100 --runs-rand 100 --runs-dist 100 --runs-bigrams 100 --runs-tfidf 100 --runs-simidf 100
 
 if __name__ == "__main__":
     # 66225 ensures failure rate = 1.51e-5 for random generation
@@ -511,124 +454,83 @@ if __name__ == "__main__":
     runs_dist = args.runs_dist
     runs_bigrams = args.runs_bigrams
     runs_tfidf = args.runs_tfidf
+    runs_simidf = args.runs_simidf
+    only_method = args.only_method
+    
+    # 如果指定了only-method，则只运行该方法
+    if only_method:
+        if only_method == 'rand':
+            runs_dist = 0
+            runs_bigrams = 0
+            runs_tfidf = 0
+            runs_simidf = 0
+        elif only_method == 'dist':
+            runs_rand = 0
+            runs_bigrams = 0
+            runs_tfidf = 0
+            runs_simidf = 0
+        elif only_method == 'bigrams':
+            runs_rand = 0
+            runs_dist = 0
+            runs_tfidf = 0
+            runs_simidf = 0
+        elif only_method == 'tfidf':
+            runs_rand = 0
+            runs_dist = 0
+            runs_bigrams = 0
+            runs_simidf = 0
+        elif only_method == 'simidf':
+            runs_rand = 0
+            runs_dist = 0
+            runs_bigrams = 0
+            runs_tfidf = 0
+        print(f"=== 只运行 {only_method} 方法 ===")
+    
     if not os.path.exists('results'):
         os.makedirs('results')
-    # 创建专门的对比结果文件夹
-    if not os.path.exists('tf_vs_bi_result'):
-        os.makedirs('tf_vs_bi_result')
+    if ADD_DELAY and not os.path.exists('results_del'):
+        os.makedirs('results_del')
     #确保运行次数为非负整数
     assert runs_rand >= 0, "Number of runs for random generation must be non-negative"
     assert runs_dist >= 0, "Number of runs for ART_dist must be non-negative"
     assert runs_bigrams >= 0, "Number of runs for ART_bigrams must be non-negative"
     assert runs_tfidf >= 0, "Number of runs for ART_tfidf must be non-negative"
+    assert runs_simidf >= 0, "Number of runs for ART_simidf must be non-negative"
     
     #中文注释：根据是否添加延迟，设置文件名后缀
     if ADD_DELAY:
         DELAY_SUFFIX = "_del"  # '_del' when delay is true; '' otherwise
     
     #中文注释：显示当前计算项目
-    print("===== Computing p-measure =====")
-    p_measure(
-        runs_rand=runs_rand,
-        runs_dist=runs_dist,
-        runs_bigrams=runs_bigrams,
-        runs_tfidf=runs_tfidf,
-        max_len=MAX_STR_LENGTH,
-    )
+    # 在delay情况下跳过pmeasure的计算
+    if not ADD_DELAY:
+        print("===== Computing p-measure =====")
+        p_measure(
+            runs_rand=runs_rand,
+            runs_dist=runs_dist,
+            runs_bigrams=runs_bigrams,
+            runs_tfidf=runs_tfidf,
+            runs_simidf=runs_simidf,
+            max_len=MAX_STR_LENGTH,
+        )
+    else:
+        print("===== 跳过p-measure计算（delay模式） =====")
+    
     print("===== Computing f-measure and t-measure =====")
     f_t_measure(
         runs_rand=runs_rand,
         runs_dist=runs_dist,
         runs_bigrams=runs_bigrams,
         runs_tfidf=runs_tfidf,
+        runs_simidf=runs_simidf,
         delay=ADD_DELAY,
         max_len=MAX_STR_LENGTH,
     )
+    print("===== 完成 =====")
+    if ADD_DELAY:
+        print("结果保存/results_del")
+    else:
+        print("结果保存/results")
 
-    #中文注释：写入统计结果并进行比较
+    #中文注释：写入统计结果
     utils.write_summary_statistics(delay=ADD_DELAY) # 写入统计结果
-    # p_val = utils.compare_P_meas(
-    #     f"results/P_measure_bigrams_{MAX_STR_LENGTH}.csv",
-    #     f"results/P_measure_rand_{MAX_STR_LENGTH}.csv",
-    # )
-    # p_val1, p_val2 = utils.compare_F_T_meas(
-    #     f"results/F_T_measure_bigrams_{MAX_STR_LENGTH}.csv",
-    #     f"results/F_T_measure_rand_{MAX_STR_LENGTH}.csv",
-    # )
-    #中文注释：打印比较结果
-    # print(f'Bigrams vs Rand (P-meas): p-val = {p_val}')
-    # print(f'Bigrams vs Rand (F-meas): p-val = {p_val1}')
-    # print(f'Bigrams vs Rand (T-meas): p-val = {p_val2}')
-    
-    # 添加TF-IDF vs Bigram统计显著性检验
-    if runs_tfidf > 0 and runs_bigrams > 0:
-        print("当前最大字符串长度:", MAX_STR_LENGTH)
-        print("===== TF-IDF vs Bigram 统计显著性检验 =====")
-        p_val_tfidf_bigram = utils.compare_P_meas(
-            f"results/P_measure_tfidf_{MAX_STR_LENGTH}.csv",
-            f"results/P_measure_bigrams_{MAX_STR_LENGTH}.csv",
-        )
-        p_val1_tfidf_bigram, p_val2_tfidf_bigram = utils.compare_F_T_meas(
-            f"results/F_T_measure_tfidf_{MAX_STR_LENGTH}.csv",
-            f"results/F_T_measure_bigrams_{MAX_STR_LENGTH}.csv",
-        )
-
-        print(f'TF-IDF vs Bigram (P-meas): p-val = {p_val_tfidf_bigram}')
-        print(f'TF-IDF vs Bigram (F-meas): p-val = {p_val1_tfidf_bigram}')
-        print(f'TF-IDF vs Bigram (T-meas): p-val = {p_val2_tfidf_bigram}')
-        
-        # 解释p-value的意义
-        print("\n=== p-value解释 ===")
-        print("p-value < 0.05: 差异具有统计显著性")
-        print("p-value < 0.01: 差异具有高度统计显著性")
-        print("p-value < 0.001: 差异具有极高度统计显著性")
-        
-        # 保存统计显著性检验结果到专门文件夹
-        delay_suffix = "_del" if ADD_DELAY else ""
-        stats_filename = f"tf_vs_bi_result/statistical_analysis_{MAX_STR_LENGTH}{delay_suffix}.txt"
-        with open(stats_filename, 'w') as f:
-            f.write("=== TF-IDF vs Bigram 统计显著性检验结果 ===\n")
-            f.write(f"最大字符串长度: {MAX_STR_LENGTH}\n")
-            f.write(f"延迟设置: {ADD_DELAY}\n")
-            f.write(f"P-measure p-value: {p_val_tfidf_bigram}\n")
-            f.write(f"F-measure p-value: {p_val1_tfidf_bigram}\n")
-            f.write(f"T-measure p-value: {p_val2_tfidf_bigram}\n")
-            f.write("\n=== p-value解释 ===\n")
-            f.write("p-value < 0.05: 差异具有统计显著性\n")
-            f.write("p-value < 0.01: 差异具有高度统计显著性\n")
-            f.write("p-value < 0.001: 差异具有极高度统计显著性\n")
-            
-            # 添加统计显著性判断
-            f.write("\n=== 统计显著性判断 ===\n")
-            if p_val_tfidf_bigram < 0.001:
-                f.write("P-measure: 差异具有极高度统计显著性\n")
-            elif p_val_tfidf_bigram < 0.01:
-                f.write("P-measure: 差异具有高度统计显著性\n")
-            elif p_val_tfidf_bigram < 0.05:
-                f.write("P-measure: 差异具有统计显著性\n")
-            else:
-                f.write("P-measure: 差异不具有统计显著性\n")
-                
-            if p_val1_tfidf_bigram < 0.001:
-                f.write("F-measure: 差异具有极高度统计显著性\n")
-            elif p_val1_tfidf_bigram < 0.01:
-                f.write("F-measure: 差异具有高度统计显著性\n")
-            elif p_val1_tfidf_bigram < 0.05:
-                f.write("F-measure: 差异具有统计显著性\n")
-            else:
-                f.write("F-measure: 差异不具有统计显著性\n")
-                
-            if p_val2_tfidf_bigram < 0.001:
-                f.write("T-measure: 差异具有极高度统计显著性\n")
-            elif p_val2_tfidf_bigram < 0.01:
-                f.write("T-measure: 差异具有高度统计显著性\n")
-            elif p_val2_tfidf_bigram < 0.05:
-                f.write("T-measure: 差异具有统计显著性\n")
-            else:
-                f.write("T-measure: 差异不具有统计显著性\n")
-        
-        print(f"统计显著性检验结果已保存到: {stats_filename}")
-        
-        # 生成综合对比报告
-        generate_comprehensive_comparison_report(MAX_STR_LENGTH, ADD_DELAY, 
-                                                p_val_tfidf_bigram, p_val1_tfidf_bigram, p_val2_tfidf_bigram)

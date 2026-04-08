@@ -146,6 +146,37 @@ run_tfidf() {
 
 }
 
+run_jsart() {
+
+    local app_name_local=$1
+    local num_repetitions_local=$2
+    local budget_local=$3
+    local diversity_strategy_local=$4
+    local resume_filepath_local=$5
+    
+    mkdir -p results/$app_name_local/jsart_$diversity_strategy_local
+
+    if [ -z "$resume_filepath_local" ]; then
+        resume_filepath_local="none"
+    fi
+
+    if [[ $resume_filepath_local != "none" ]]; then
+        echo "[$app_name_local] Resuming jsart $diversity_strategy_local experiment $i"
+        python main.py --app-name $app_name_local --generator-name jsart --budget $budget_local \
+            --progress --max-length 40 --num-candidates 30 --diversity-strategy $diversity_strategy_local \
+            --q 2 --resume-filepath $resume_filepath_local \
+            > results/$app_name_local/jsart_$diversity_strategy_local/jsart_$diversity_strategy_local_${i}.log
+        return
+    fi
+
+    echo "[$app_name_local] Running jsart $diversity_strategy_local experiment $i"
+    python main.py --app-name $app_name_local --generator-name jsart --budget $budget_local \
+        --progress --max-length 40 --num-candidates 30 --diversity-strategy $diversity_strategy_local \
+        --q 2 \
+        > results/$app_name_local/jsart_$diversity_strategy_local/jsart_$diversity_strategy_local_${i}.log
+
+}
+
 conda activate webtestgen
 conda env list
 
@@ -222,7 +253,7 @@ elif [[ $strategy == "qgrams" ]]; then #默认进行sequence的，input的需要
         run_qgrams $app_name $i $budget $diversity_strategy $resume_filepath
     done
 
-elif [[ $diversity_strategy == "qgrams_all" ]] #qgrams的sequence和input都进行
+elif [[ $strategy == "qgrams_all" ]]; then #qgrams的sequence和input都进行
     for i in $(seq 1 $num_repetitions); do
         run_qgrams $app_name $i $budget sequence $resume_filepath
         run_qgrams $app_name $i $budget input $resume_filepath
@@ -235,9 +266,14 @@ elif [[ $strategy == "simidf" ]]; then
         run_simidf $app_name $i $budget $diversity_strategy $resume_filepath
     done
 
-elif [[ $diversity_strategy == "simidf_all" ]] #simidf的sequence和input都进行
+elif [[ $strategy == "simidf_input" ]]; then
     for i in $(seq 1 $num_repetitions); do
-        run_simidf $app_name $i $budget sequence $resume_filepath
+        run_simidf $app_name $i $budget input $resume_filepath
+    done
+
+elif [[ $strategy == "simidf_all" ]]; then #simidf的sequence和input都进行
+    for i in $(seq 1 $num_repetitions); do
+        run_simidf $app_name $i $budget $diversity_strategy $resume_filepath
         run_simidf $app_name $i $budget input $resume_filepath
     done
 
@@ -245,6 +281,17 @@ elif [[ $diversity_strategy == "simidf_all" ]] #simidf的sequence和input都进�
 #     for i in $(seq 1 $num_repetitions); do
 #         run_tfidf $app_name $i $budget $diversity_strategy $resume_filepath
 #     done
+elif [[ $strategy == "jsart" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_jsart $app_name $i $budget $diversity_strategy $resume_filepath
+    done
+
+elif [[ $strategy == "jsart_all" ]]; then #jsart的sequence和input都进行
+    for i in $(seq 1 $num_repetitions); do
+        run_jsart $app_name $i $budget sequence $resume_filepath
+        run_jsart $app_name $i $budget input $resume_filepath
+    done
+
 elif [[ $strategy == "main_methods" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_simidf $app_name $i $budget sequence 
@@ -252,6 +299,29 @@ elif [[ $strategy == "main_methods" ]]; then
         run_qgrams $app_name $i $budget sequence 
         run_qgrams $app_name $i $budget input 
     done
+
+elif [[ $strategy == "main_methods_with_jsart" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_simidf $app_name $i $budget sequence 
+        run_simidf $app_name $i $budget input 
+        run_qgrams $app_name $i $budget sequence 
+        run_qgrams $app_name $i $budget input 
+        run_jsart $app_name $i $budget sequence 
+        run_jsart $app_name $i $budget input 
+    done
+
+elif [[ $strategy == "all_with_jsart" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_random $app_name $i $budget 
+        run_distance $app_name $i $budget sequence 
+        run_qgrams $app_name $i $budget sequence 
+        run_qgrams $app_name $i $budget input 
+        run_simidf $app_name $i $budget sequence 
+        run_simidf $app_name $i $budget input 
+        run_jsart $app_name $i $budget sequence 
+        run_jsart $app_name $i $budget input 
+    done
+
 else
     echo "Invalid strategy: " $strategy
     exit 1

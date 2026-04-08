@@ -55,8 +55,8 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
         self.alpha = alpha
         
         # SimIDF核心数据结构（遵循global_idf算法.txt文档定义）
-        self.global_tf_vector: Dict[Tuple[str, str], float] = {}  # 全局TF向量（词频向量）
-        self.doc_freq: Dict[Tuple[str, str], int] = {}  # 文档频率统计
+        self.global_tf_vector: Dict[str, float] = {}  # 全局TF向量（词频向量）
+        self.doc_freq: Dict[str, int] = {}  # 文档频率统计
         self.total_tests = 0  # 总测试用例数
         self.archive: List[Individual] = []  # 测试用例存档
 
@@ -64,11 +64,10 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
             diversity_strategy in DIVERSITY_STRATEGY_NAMES
         ), "Invalid diversity strategy"
 
-    def _extract_features(self, individual: Individual) -> List[Tuple[str, str]]:
+    def _extract_features(self, individual: Individual) -> List[str]:
         """
         从测试用例中提取2-gram特征
         支持两种多样性策略：序列多样性和输入多样性
-        使用tuple格式保持与Qgrams方法的一致性
         """
         if self.diversity_strategy == SEQUENCE_DIVERSITY_STRATEGY_NAME:
             # 序列多样性策略：仅使用方法名序列
@@ -77,10 +76,10 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
                 if isinstance(statement, MethodCallStatement):
                     method_sequence.append(statement.method_name)
             
-            # 提取2-gram特征（方法调用序列的相邻组合），使用tuple格式
+            # 提取2-gram特征（方法调用序列的相邻组合）
             ngrams = []
             for i in range(len(method_sequence) - 1):
-                ngram = (method_sequence[i], method_sequence[i+1])  # 使用tuple而不是字符串
+                ngram = f"({method_sequence[i]},{method_sequence[i+1]})"
                 ngrams.append(ngram)
             
             return ngrams
@@ -125,10 +124,10 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
                         )
                 method_strs.append(f"{method.method_name}({', '.join(args)})")
             
-            # 提取2-gram特征（包含参数信息的方法序列），使用tuple格式
+            # 提取2-gram特征（包含参数信息的方法序列）
             ngrams = []
             for i in range(len(method_strs) - 1):
-                ngram = (method_strs[i], method_strs[i+1])  # 使用tuple而不是字符串
+                ngram = f"({method_strs[i]},{method_strs[i+1]})"
                 ngrams.append(ngram)
             
             return ngrams
@@ -147,7 +146,7 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
             return 0.0
             
         # 计算当前测试用例的TF向量（词频向量）- 严格遵循算法文档进行归一化
-        current_tf_vector: Dict[Tuple[str, str], float] = {}
+        current_tf_vector: Dict[str, float] = {}
         total_features = len(features)
         for feature in features:
             if feature not in current_tf_vector:
@@ -159,8 +158,8 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
             return 1.0
             
         # 计算TF-IDF向量
-        current_tfidf_vector: Dict[Tuple[str, str], float] = {}
-        global_tfidf_vector: Dict[Tuple[str, str], float] = {}
+        current_tfidf_vector: Dict[str, float] = {}
+        global_tfidf_vector: Dict[str, float] = {}
         
         # 计算当前测试用例的TF-IDF向量
         for feature, tf in current_tf_vector.items():
@@ -200,11 +199,8 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
         # 计算多样性得分（1 - 相似度）
         diversity_score = 1.0 - cosine_similarity
         
-        # 建议1：添加适度长度因子（最小改动）
-        length_factor = self._compute_moderate_length_factor(individual)
-        
-        # 返回调整后的多样性得分
-        return diversity_score * length_factor
+        # 返回多样性得分
+        return diversity_score
 
     def _update_global_vector(self, individual: Individual) -> None:
         """
@@ -217,7 +213,7 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
             return
             
         # 计算当前测试用例的TF向量（词频向量）- 严格遵循算法文档进行归一化
-        current_tf_vector: Dict[Tuple[str, str], float] = {}
+        current_tf_vector: Dict[str, float] = {}
         total_features = len(features)
         for feature in features:
             if feature not in current_tf_vector:
@@ -245,30 +241,6 @@ class SimIDFTestCaseGenerator(TestCaseGenerator):
         
         # 添加到存档
         self.archive.append(individual)
-
-    def _compute_moderate_length_factor(self, individual: Individual) -> float:
-        """
-        修改建议1：适度长度因子
-        目标：避免过度偏好短测试用例，适度奖励中等长度
-        改动幅度：低，仅影响最终得分缩放
-        """
-        method_calls = [s for s in individual.statements if isinstance(s, MethodCallStatement)]
-        total_length = len(method_calls)
-        
-        
-        # if total_length <= 10:
-        #     return 0.95    # 轻微惩罚过短测试用例
-        # elif total_length <= 30:
-        #     return 1.0    # 理想长度范围无调整
-        # # elif total_length <= 30:
-        # #     return 1.12    # 适度奖励中等长度
-        # else:
-        #     return 1.05   
-
-        if total_length <= 20:
-            return 1.0
-        else:
-            return 1.05
 
     def generate(
         self, uncovered_targets: List[CoverageTarget], max_length: int = 30
