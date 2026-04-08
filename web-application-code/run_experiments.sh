@@ -295,8 +295,8 @@ elif [[ $strategy == "jsart_all" ]]; then #jsart的sequence和input都进行
 elif [[ $strategy == "main_methods" ]]; then
     for i in $(seq 1 $num_repetitions); do
         run_simidf $app_name $i $budget sequence 
-        run_simidf $app_name $i $budget input 
         run_qgrams $app_name $i $budget sequence 
+        run_simidf $app_name $i $budget input
         run_qgrams $app_name $i $budget input 
     done
 
@@ -306,22 +306,7 @@ elif [[ $strategy == "main_methods_with_jsart" ]]; then
         run_simidf $app_name $i $budget input 
         run_qgrams $app_name $i $budget sequence 
         run_qgrams $app_name $i $budget input 
-        run_jsart $app_name $i $budget sequence 
-        run_jsart $app_name $i $budget input 
     done
-
-elif [[ $strategy == "all_with_jsart" ]]; then
-    for i in $(seq 1 $num_repetitions); do
-        run_random $app_name $i $budget 
-        run_distance $app_name $i $budget sequence 
-        run_qgrams $app_name $i $budget sequence 
-        run_qgrams $app_name $i $budget input 
-        run_simidf $app_name $i $budget sequence 
-        run_simidf $app_name $i $budget input 
-        run_jsart $app_name $i $budget sequence 
-        run_jsart $app_name $i $budget input 
-    done
-
 else
     echo "Invalid strategy: " $strategy
     exit 1
