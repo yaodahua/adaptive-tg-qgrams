@@ -320,40 +320,6 @@ class JSARTTestCaseGenerator(TestCaseGenerator):
             )
             for _ in range(self.num_candidates)
         ]
-        
-        # # 打印每个候选测试用例的详细信息
-        # print(f"\n{'='*60}")
-        # print(f"目标边: {target_edge_name}")
-        # print(f"类变量名: {self.class_variable_name}")
-        # print(f"生成的 {self.num_candidates} 个候选测试用例")
-        # print(f"{'='*60}")
-        # for i, c in enumerate(candidates):
-        #     print(f"\n--- 候选 {i+1} (ID: {c.id}) ---")
-        #     print(f"语句数量: {len(c.statements)}")
-            
-        #     # 筛选出 MethodCallStatement
-        #     method_calls = list(filter(lambda x: isinstance(x, MethodCallStatement), c.statements))
-        #     print(f"方法调用语句数量: {len(method_calls)}")
-        #     print(f"其他语句数量: {len(c.statements) - len(method_calls)}")
-            
-        #     # 打印所有语句内容
-        #     print("\n【所有语句内容】")
-        #     for j, stmt in enumerate(c.statements):
-        #         stmt_type = type(stmt).__name__
-        #         marker = " [用于q-grams]" if isinstance(stmt, MethodCallStatement) else ""
-        #         print(f"  {j+1}. [{stmt_type}]{marker} {stmt.to_string()}")
-            
-        #     # 打印方法调用序列
-        #     print(f"\n【用于 q-grams 计算的语句序列】")
-        #     method_names = [m.method_name for m in method_calls]
-        #     for j, name in enumerate(method_names):
-        #         print(f"  {j+1}. {name}")
-            
-        #     # 计算 q-grams
-        #     print(f"\nq-grams 计算 (q={self.q}):")
-        #     candidate_qgrams = self.compute_qgrams(individual=c)
-        #     for qgram, count in sorted(candidate_qgrams.items()):
-        #         print(f"  {qgram}: {count}")
 
         selected_individual = None
 
@@ -364,13 +330,7 @@ class JSARTTestCaseGenerator(TestCaseGenerator):
             candidate_qgrams = self.compute_qgrams(individual=c)
             js_div = self.js_calculator.compute_js(candidate_qgrams)
             js_divergences.append(js_div)
-            # individual_lengths.append(len(c.statements))
-            # 只计算MethodCallStatement的数量，因为q-grams只基于方法调用序列
-            method_call_statements = list(filter(
-                lambda x: isinstance(x, MethodCallStatement), 
-                c.statements
-            ))
-            individual_lengths.append(len(method_call_statements))
+            individual_lengths.append(len(c.statements))
 
         # 处理第一次运行时的特殊情况
         if len(js_divergences) == 0 or np.isnan(js_divergences).all():
@@ -384,20 +344,9 @@ class JSARTTestCaseGenerator(TestCaseGenerator):
             # 1. 计算长度权重（对数增长，避免过度敏感）
             length_weights = np.log1p(individual_lengths)
             
-            # 2. 结合JS散度和长度权重（）
-            min_length = np.min(individual_lengths)
-            max_length = np.max(individual_lengths)
-            length_range = max_length - min_length
-            # 打印最小、最大长度、长度范围
-            print(f"最小长度: {min_length}, 最大长度: {max_length}, 长度范围: {length_range}")
-
-
-            length_weight = np.min(length_weights)/np.max(length_weights)
-            js_weight = 1 - length_weight
-            # js_weight = length_range / (max_length)
-
-            # length_weight = np.min(length_weights)/np.max(length_weights)
-            print(f"JS权重: {js_weight}, 长度权重: {length_weight}")
+            # 2. 结合JS散度和长度权重（70% JS散度，30%长度）
+            js_weight = 0.7
+            length_weight = 0.3
             
             # 3. 标准化JS散度到0-1范围（如果不在该范围）
             normalized_js = js_divergences / np.max(js_divergences) if np.max(js_divergences) > 0 else js_divergences
@@ -408,14 +357,11 @@ class JSARTTestCaseGenerator(TestCaseGenerator):
             # combined_scores = normalized_js* normalized_lengths #直接相乘
             # 加权和：保持JS散度主导，适度考虑长度
             combined_scores = js_weight * normalized_js + length_weight * normalized_lengths
-            print(f"综合得分=: {combined_scores}")
             
             # 选择综合得分最高的候选测试用例
             index_max_js = np.argmax(combined_scores)
-
         
         selected_individual = candidates[index_max_js]
-        print(f"选择的测试用例: {selected_individual}")
 
         assert selected_individual is not None, "Selected individual should not be None"
 
@@ -466,12 +412,7 @@ class JSARTTestCaseGenerator(TestCaseGenerator):
             candidate_qgrams = self.compute_qgrams(individual=c)
             js_div = self.js_calculator.compute_js(candidate_qgrams)
             js_divergences.append(js_div)
-            # 只计算MethodCallStatement的数量，因为q-grams只基于方法调用序列
-            method_call_statements = list(filter(
-                lambda x: isinstance(x, MethodCallStatement), 
-                c.statements
-            ))
-            individual_lengths.append(len(method_call_statements))
+            individual_lengths.append(len(c.statements))
 
         # 处理第一次运行时的特殊情况
         if len(js_divergences) == 0 or np.isnan(js_divergences).all():

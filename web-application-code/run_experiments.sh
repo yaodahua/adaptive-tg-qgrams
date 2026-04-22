@@ -177,6 +177,38 @@ run_jsart() {
 
 }
 
+run_jsle() {
+
+    local app_name_local=$1
+    local num_repetitions_local=$2
+    local budget_local=$3
+    local generator_name_local=$4
+    local diversity_strategy_local=$5
+    local resume_filepath_local=$6
+    
+    mkdir -p results/$app_name_local/${generator_name_local}_${diversity_strategy_local}
+
+    if [ -z "$resume_filepath_local" ]; then
+        resume_filepath_local="none"
+    fi
+
+    if [[ $resume_filepath_local != "none" ]]; then
+        echo "[$app_name_local] Resuming $generator_name_local $diversity_strategy_local experiment $i"
+        python main.py --app-name $app_name_local --generator-name $generator_name_local --budget $budget_local \
+            --progress --max-length 40 --num-candidates 30 --diversity-strategy $diversity_strategy_local \
+            --q 2 --resume-filepath $resume_filepath_local \
+            > results/$app_name_local/${generator_name_local}_${diversity_strategy_local}/${generator_name_local}_${diversity_strategy_local}_${i}.log
+        return
+    fi
+
+    echo "[$app_name_local] Running $generator_name_local $diversity_strategy_local experiment $i"
+    python main.py --app-name $app_name_local --generator-name $generator_name_local --budget $budget_local \
+        --progress --max-length 40 --num-candidates 30 --diversity-strategy $diversity_strategy_local \
+        --q 2 \
+        > results/$app_name_local/${generator_name_local}_${diversity_strategy_local}/${generator_name_local}_${diversity_strategy_local}_${i}.log
+
+}
+
 conda activate webtestgen
 conda env list
 
@@ -290,6 +322,34 @@ elif [[ $strategy == "jsart_all" ]]; then #jsart的sequence和input都进行
     for i in $(seq 1 $num_repetitions); do
         run_jsart $app_name $i $budget sequence $resume_filepath
         run_jsart $app_name $i $budget input $resume_filepath
+    done
+
+elif [[ $strategy == "jsle_a" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_jsle $app_name $i $budget jsle_a sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_a input $resume_filepath
+    done
+
+elif [[ $strategy == "jsle_b" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_jsle $app_name $i $budget jsle_b sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_b input $resume_filepath
+    done
+
+elif [[ $strategy == "jsle_c" ]]; then
+    for i in $(seq 1 $num_repetitions); do
+        run_jsle $app_name $i $budget jsle_c sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_c input $resume_filepath
+    done
+
+elif [[ $strategy == "jsle_all" ]]; then #jsle_a, jsle_b, jsle_c 都运行
+    for i in $(seq 1 $num_repetitions); do
+        run_jsle $app_name $i $budget jsle_a sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_b sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_c sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_a input $resume_filepath
+        run_jsle $app_name $i $budget jsle_b input $resume_filepath
+        run_jsle $app_name $i $budget jsle_c input $resume_filepath
     done
 
 elif [[ $strategy == "main_methods" ]]; then

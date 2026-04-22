@@ -108,24 +108,61 @@ def get_statistics(p_file_csv, f_t_file_csv):
 
 def print_all_statistics(dir, lens):
     for size in lens:
-        rand = get_statistics(
-            f"{dir}/P_measure_rand_{size}.csv", f"{dir}/F_T_measure_rand_{size}.csv"
-        )
-        dist = get_statistics(
-            f"{dir}/P_measure_dist_{size}.csv", f"{dir}/F_T_measure_dist_{size}.csv"
-        )
-        bigrams = get_statistics(
-            f"{dir}/P_measure_bigrams_{size}.csv",
-            f"{dir}/F_T_measure_bigrams_{size}.csv",
-        )
-        tfidf = get_statistics(
-            f"{dir}/P_measure_tfidf_{size}.csv",
-            f"{dir}/F_T_measure_tfidf_{size}.csv",
-        )
-        print(f"{size}\t\t\tRand\t\tDist\t\tBigrams\t\tTF-IDF")
-        print(f"F-meas\t\t{rand[0]:.1f}\t\t{dist[0]:.1f}\t\t{bigrams[0]:.1f}\t\t{tfidf[0]:.1f}")
-        print(f"T-meas\t\t{rand[1]:.3f}\t\t{dist[1]:.3f}\t\t{bigrams[1]:.3f}\t\t{tfidf[1]:.3f}")
-        print(f"P-meas\t\t{rand[2]:.2e}\t{dist[2]:.2e}\t{bigrams[2]:.2e}\t{tfidf[2]:.2e}")
+        # 检查哪些方法有数据文件
+        available_methods = []
+        for gen in ["rand", "dist", "bigrams", "tfidf", "simidf", "js", "jsle_a", "jsle_b", "jsle_c"]:
+            p_filename = f"{dir}/P_measure_{gen}_{size}.csv"
+            if os.path.isfile(p_filename):
+                available_methods.append(gen)
+        
+        if not available_methods:
+            print(f"警告：在长度{size}下未找到任何方法的统计数据文件")
+            continue
+        
+        # 获取所有可用方法的统计数据
+        stats = {}
+        for gen in available_methods:
+            try:
+                stats[gen] = get_statistics(
+                    f"{dir}/P_measure_{gen}_{size}.csv", 
+                    f"{dir}/F_T_measure_{gen}_{size}.csv"
+                )
+            except (FileNotFoundError, ValueError) as e:
+                print(f"警告：处理{gen}方法的数据时出错: {e}")
+                continue
+        
+        # 打印表头
+        header = f"{size}\t\t\t"
+        for gen in available_methods:
+            header += f"{gen}\t\t"
+        print(header)
+        
+        # 打印F-measure
+        f_line = "F-meas\t\t"
+        for gen in available_methods:
+            if gen in stats:
+                f_line += f"{stats[gen][0]:.1f}\t\t"
+            else:
+                f_line += "N/A\t\t"
+        print(f_line)
+        
+        # 打印T-measure
+        t_line = "T-meas\t\t"
+        for gen in available_methods:
+            if gen in stats:
+                t_line += f"{stats[gen][1]:.3f}\t\t"
+            else:
+                t_line += "N/A\t\t"
+        print(t_line)
+        
+        # 打印P-measure
+        p_line = "P-meas\t\t"
+        for gen in available_methods:
+            if gen in stats:
+                p_line += f"{stats[gen][2]:.2e}\t"
+            else:
+                p_line += "N/A\t\t"
+        print(p_line)
         print()
 
 
@@ -141,13 +178,19 @@ def write_summary_statistics(delay=False, is_triangle=False):
     
     # 检查哪些生成方法有数据文件
     available_methods = []
-    for gen in ["rand", "dist", "bigrams", "tfidf", "simidf", "js"]:
-        # 检查是否有任意长度的P-measure文件存在
-        for ll in lengths:
-            p_filename = f"results{triangle_dir}{del_dir}/P_measure_{gen}_{ll}.csv"
-            if os.path.isfile(p_filename):
-                available_methods.append(gen)
-                break
+    for gen in ["rand", "dist", "bigrams", "tfidf", "simidf", "js", "jsle_a", "jsle_b", "jsle_c"]:
+        if delay:
+            for ll in lengths:
+                ft_filename = f"results{triangle_dir}{del_dir}/F_T_measure_{gen}_{ll}.csv"
+                if os.path.isfile(ft_filename):
+                    available_methods.append(gen)
+                    break
+        else:
+            for ll in lengths:
+                p_filename = f"results{triangle_dir}{del_dir}/P_measure_{gen}_{ll}.csv"
+                if os.path.isfile(p_filename):
+                    available_methods.append(gen)
+                    break
     
     # 如果没有找到任何方法的数据，则跳过写入
     if not available_methods:
@@ -155,19 +198,23 @@ def write_summary_statistics(delay=False, is_triangle=False):
         return
     
     with open(f"results{triangle_dir}{del_dir}/summary_stats.csv", "w") as f:
-        f.write(
-            "Str len, Gen, P-Runs, P-Mean, P-Err, F-Runs, F-Mean, F-Err, T-Runs, T-Mean, T-Err\n"
-        )
+        if delay:
+            f.write("Str len, Gen, F-Runs, F-Mean, F-Err, T-Runs, T-Mean, T-Err\n")
+        else:
+            f.write("Str len, Gen, P-Runs, P-Mean, P-Err, F-Runs, F-Mean, F-Err, T-Runs, T-Mean, T-Err\n")
         for ll in lengths:
             for gen in available_methods:
-                filename = f"results{triangle_dir}{del_dir}/P_measure_{gen}_{ll}.csv"
-                p_runs, p_mean, p_stderr, p_relstderr = "", "", "", ""
-                if os.path.isfile(filename):
-                    try:
-                        p_runs, p_mean, p_stderr, p_relstderr = get_p_statistics(filename)
-                    except (IndexError, ValueError, FileNotFoundError) as e:
-                        print(f"警告：处理文件 {filename} 时出错: {e}")
-                        continue
+                if not delay:
+                    filename = f"results{triangle_dir}{del_dir}/P_measure_{gen}_{ll}.csv"
+                    p_runs, p_mean, p_stderr, p_relstderr = "", "", "", ""
+                    if os.path.isfile(filename):
+                        try:
+                            p_runs, p_mean, p_stderr, p_relstderr = get_p_statistics(filename)
+                        except (IndexError, ValueError, FileNotFoundError) as e:
+                            print(f"警告：处理文件 {filename} 时出错: {e}")
+                            continue
+                else:
+                    p_runs, p_mean, p_relstderr = "", "", ""
                 
                 filename = f"results{triangle_dir}{del_dir}/F_T_measure_{gen}_{ll}.csv"
                 (
@@ -196,9 +243,14 @@ def write_summary_statistics(delay=False, is_triangle=False):
                         print(f"警告：处理文件 {filename} 时出错: {e}")
                         continue
                 
-                f.write(
-                    f"{ll}, {gen}, {p_runs}, {p_mean}, {p_relstderr}, {f_runs}, {f_mean}, {f_relstderr}, {t_runs}, {t_mean}, {t_relstderr}\n"
-                )
+                if delay:
+                    f.write(
+                        f"{ll}, {gen}, {f_runs}, {f_mean}, {f_relstderr}, {t_runs}, {t_mean}, {t_relstderr}\n"
+                    )
+                else:
+                    f.write(
+                        f"{ll}, {gen}, {p_runs}, {p_mean}, {p_relstderr}, {f_runs}, {f_mean}, {f_relstderr}, {t_runs}, {t_mean}, {t_relstderr}\n"
+                    )
 
 
 def write_f_t_results(res, gen, length, delay=False, is_triangle=False):

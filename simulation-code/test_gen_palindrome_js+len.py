@@ -206,7 +206,7 @@ def ART_bigram(
 # 中文注释：基于JS散度的自适应随机测试
 
 def ART_js(
-    test_gen_budget=50,
+    test_gen_budget=100,
     W_sample_size=10,
     stop_at_failure=False,
     delay=False,
@@ -237,9 +237,24 @@ def ART_js(
                 return (n, time.time() - start)
         
         while n < test_gen_budget or stop_at_failure:
+            # W = []
+            # W_js = []
+            
+            # for i in range(W_sample_size):
+            #     s = random_string(max_len)
+            #     local_bigram_dict = {}
+            #     bigram_count(local_bigram_dict, s)
+            #     js_value = js_model.compute_js(local_bigram_dict)
+            #     W.append(s)
+            #     W_js.append(js_value)
+            
+            # # 选择JS散度最大的候选（与全局分布差异最大）
+            # s_exec = W[np.argmax(W_js)]
+
             W = []
             W_js = []
-            
+            W_lengths = []  # 新增：在循环中直接记录长度
+
             for i in range(W_sample_size):
                 s = random_string(max_len)
                 local_bigram_dict = {}
@@ -247,11 +262,50 @@ def ART_js(
                 js_value = js_model.compute_js(local_bigram_dict)
                 W.append(s)
                 W_js.append(js_value)
+                W_lengths.append(len(s))  # 关键优化：在循环中直接计算长度
+
+            # 平衡的JS散度与长度结合：标准化权重法
+            # 1. 计算长度权重（对数增长，避免过度敏感）
+            length_weights = np.log1p(W_lengths)
             
-            # 选择JS散度最大的候选（与全局分布差异最大）
-            s_exec = W[np.argmax(W_js)]
-            # max_idx = W_js.index(max(W_js))
-            # s_exec = W[max_idx]
+            # length_weights = np.log(W_lengths) / np.log(np.max(W_lengths))
+
+
+            # 2. 结合JS散度和长度权重（）
+            # js_weight = 0.9
+            # length_weight = 0.1
+            #W中最小的长度
+            min_length = np.min(W_lengths)
+            max_length = np.max(W_lengths)
+            #W中长度的范围
+            length_range = max_length - min_length
+            # 打印最小、最大长度、长度范围
+            # print(f"最小长度: {min_length}, 最大长度: {max_length}, 长度范围: {length_range}")
+
+            js_weight = length_range / max_length
+            length_weight = 1 - js_weight
+            # if stop_at_failure:
+                # 打印JS权重和长度权重
+                # print(f"最小长度: {min_length}, 最大长度: {max_length}, 长度范围: {length_range}")
+                # print(f"JS权重: {js_weight}, 长度权重: {length_weight}")
+            # 打印JS权重和长度权重
+            # print(f"JS权重: {js_weight}, 长度权重: {length_weight}")
+
+
+
+            # 3. 标准化JS散度到0-1范围
+            normalized_js = W_js / np.max(W_js) if np.max(W_js) > 0 else W_js
+
+            # 4. 标准化长度权重到0-1范围
+            # normalized_lengths = length_weights / np.max(length_weights)
+            normalized_lengths = length_weights / np.max(length_weights)
+
+            # 5. 加权和：保持JS散度主导，适度考虑长度
+            combined_scores = js_weight * normalized_js + length_weight * normalized_lengths
+
+            # 选择综合得分最高的候选测试用例
+            s_exec = W[np.argmax(combined_scores)]
+
             n += 1
             selected_lengths.append(len(s_exec))
 
@@ -332,6 +386,71 @@ def ART_tfidf(
     
     return f / test_gen_budget
 
+# 中文注释：基于SimIDF的自适应随机测试
+# def ART_simidf(
+#     test_gen_budget=100,
+#     W_sample_size=10,
+#     stop_at_failure=False,
+#     delay=False,
+#     max_len=100,
+# ):
+#     """使用SimIDF算法(基于文档频率的TF-IDF)的自适应随机测试"""
+#     if stop_at_failure:
+#         start = time.time()
+    
+#     # 重置SimIDF算法状态
+#     simidf_art.simidf_art.reset()
+    
+#     # 初始化：执行第一个随机测试
+#     s = random_string(max_len)
+#     simidf_art.simidf_art.update_structures(s)
+    
+#     n = 1
+#     f = 0.0
+#     selected_lengths = []
+#     selected_lengths.append(len(s))
+
+#     if is_palindrome.is_palindrom(s, delay) != is_palindrome.is_palindrom_mu1(s):
+#         f += 1.0
+#         if stop_at_failure:
+#             return (n, time.time() - start)
+        
+#     while n < test_gen_budget or stop_at_failure:
+#         W = []
+#         W_diversity = []
+        
+#         # 生成候选集
+#         for i in range(W_sample_size):
+#             s = random_string(max_len)
+#             # 计算多样性分数（与全局TF-IDF向量的距离）
+#             diversity_score = simidf_art.simidf_art.diversity_score(s)
+#             W.append(s)
+#             W_diversity.append(diversity_score)
+        
+#         # 选择多样性分数最高的候选（距离最大，即最不相似）
+#         s_exec = W[np.argmax(W_diversity)]
+#         selected_lengths.append(len(s_exec))
+
+#         n += 1
+        
+#         if is_palindrome.is_palindrom(s_exec, delay) != is_palindrome.is_palindrom_mu1(s_exec):
+#             f += 1.0
+#             if stop_at_failure:
+#                 return (n, time.time() - start)
+        
+#         # 更新SimIDF算法结构
+#         simidf_art.simidf_art.update_structures(s_exec)
+    
+    
+#     avg_length = np.mean(selected_lengths)
+#         #将avg_length保留两位小数，并写入results_length下的simidf_length.csv 文件中,csv文件有1列，记录的是该轮次的测试用例平均长度
+#     avg_length = round(avg_length, 2)
+#     os.makedirs('results_length', exist_ok=True)
+#     with open('results_length/simidf_length.csv', 'a') as fw:
+#         fw.write(f'{avg_length}\n')
+#     print("文件写入完成")
+
+#     return f / test_gen_budget
 
 def ART_simidf(
     test_gen_budget=100,

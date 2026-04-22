@@ -23,6 +23,9 @@ from config import (
     DISTANCE_GENERATOR_NAME,
     GENERATOR_NAMES,
     JSART_GENERATOR_NAME,
+    JSLE_A_GENERATOR_NAME,
+    JSLE_B_GENERATOR_NAME,
+    JSLE_C_GENERATOR_NAME,
     LENGTH_GENERATOR_NAME,
     QGRAMS_GENERATOR_NAME,
     SIMIDF_GENERATOR_NAME,
@@ -413,12 +416,18 @@ class TestCaseGenerator(ABC):
             generator_name in GENERATOR_NAMES
         ), f"Generator name {generator_name} is not valid"
 
+        # jsle_a/b/c 使用同一个文件 jsle_test_case_generator.py
+        if generator_name in [JSLE_A_GENERATOR_NAME, JSLE_B_GENERATOR_NAME, JSLE_C_GENERATOR_NAME]:
+            actual_generator_name = "jsle"
+        else:
+            actual_generator_name = generator_name
+
         # 检查生成器文件是否存在
         assert os.path.exists(
             os.path.join(
-                os.getcwd(), "generators", f"{generator_name}_test_case_generator.py"
+                os.getcwd(), "generators", f"{actual_generator_name}_test_case_generator.py"
             )
-        ), f"Test case generator file not found: {generator_name}_test_case_generator.py"
+        ), f"Test case generator file not found: {actual_generator_name}_test_case_generator.py"
 
         # 获取类变量名称
         class_filename = Path(
@@ -428,16 +437,18 @@ class TestCaseGenerator(ABC):
 
         # 动态导入生成器模块
         generator_module = importlib.import_module(
-            f"generators.{generator_name}_test_case_generator"
+            f"generators.{actual_generator_name}_test_case_generator"
         )
+        
+        # jsle_a/b/c 对应的类名是 JSLETestCaseGenerator
+        if generator_name in [JSLE_A_GENERATOR_NAME, JSLE_B_GENERATOR_NAME, JSLE_C_GENERATOR_NAME]:
+            target_class_name = "jsletestcasegenerator"
+        else:
+            target_class_name = f"{generator_name.capitalize()}TestCaseGenerator".lower()
         
         # 查找生成器类
         for name, cls in generator_module.__dict__.items():
-            if (
-                name.lower()
-                == f"{generator_name.capitalize()}TestCaseGenerator".lower()
-                and issubclass(cls, TestCaseGenerator)
-            ):
+            if name.lower() == target_class_name and issubclass(cls, TestCaseGenerator):
                 # 根据生成器类型创建相应实例
                 if (
                     generator_name == DISTANCE_GENERATOR_NAME
@@ -485,6 +496,36 @@ class TestCaseGenerator(ABC):
                         num_candidates=num_candidates,
                         diversity_strategy=diversity_strategy,
                         q=q,
+                    )
+                if generator_name == JSLE_A_GENERATOR_NAME:
+                    from generators.jsle_test_case_generator import BoundaryScheme
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                        q=q,
+                        boundary_scheme=BoundaryScheme.SCHEME_A,
+                    )
+                if generator_name == JSLE_B_GENERATOR_NAME:
+                    from generators.jsle_test_case_generator import BoundaryScheme
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                        q=q,
+                        boundary_scheme=BoundaryScheme.SCHEME_B,
+                    )
+                if generator_name == JSLE_C_GENERATOR_NAME:
+                    from generators.jsle_test_case_generator import BoundaryScheme
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                        q=q,
+                        boundary_scheme=BoundaryScheme.SCHEME_C,
                     )
                 return cls(app_name=app_name, class_variable_name=class_variable_name)
         raise ValueError(

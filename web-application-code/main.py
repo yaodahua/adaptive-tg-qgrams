@@ -26,6 +26,9 @@ from config import (
     DIVERSITY_STRATEGY_NAMES,
     GENERATOR_NAMES,
     JSART_GENERATOR_NAME,
+    JSLE_A_GENERATOR_NAME,
+    JSLE_B_GENERATOR_NAME,
+    JSLE_C_GENERATOR_NAME,
     QGRAMS_GENERATOR_NAME,
     RANDOM_GENERATOR_NAME,
     SEQUENCE_DIVERSITY_STRATEGY_NAME,
@@ -75,19 +78,19 @@ args.add_argument(
 )
 args.add_argument(
     "--num-candidates",  # 候选测试用例数量
-    help=f"Number of candidates for generators {DISTANCE_GENERATOR_NAME}/ {QGRAMS_GENERATOR_NAME}/{SIMIDF_GENERATOR_NAME}/{TFIDF_GENERATOR_NAME}/{JSART_GENERATOR_NAME}",
+    help=f"Number of candidates for generators {DISTANCE_GENERATOR_NAME}/ {QGRAMS_GENERATOR_NAME}/{SIMIDF_GENERATOR_NAME}/{TFIDF_GENERATOR_NAME}/{JSART_GENERATOR_NAME}/{JSLE_A_GENERATOR_NAME}/{JSLE_B_GENERATOR_NAME}/{JSLE_C_GENERATOR_NAME}",
     type=int,
     default=5,
 )
 args.add_argument(
     "--q",  # Q-gram参数
-    help=f"Number of qgrams for generators {QGRAMS_GENERATOR_NAME}/{JSART_GENERATOR_NAME}",
+    help=f"Number of qgrams for generators {QGRAMS_GENERATOR_NAME}/{JSART_GENERATOR_NAME}/{JSLE_A_GENERATOR_NAME}/{JSLE_B_GENERATOR_NAME}/{JSLE_C_GENERATOR_NAME}",
     type=int,
     default=2,
 )
 args.add_argument(
     "--diversity-strategy",  # 多样性策略
-    help=f"Number of candidates for generators {DISTANCE_GENERATOR_NAME}, {QGRAMS_GENERATOR_NAME}, {SIMIDF_GENERATOR_NAME} and {JSART_GENERATOR_NAME}",
+    help=f"Number of candidates for generators {DISTANCE_GENERATOR_NAME}, {QGRAMS_GENERATOR_NAME}, {SIMIDF_GENERATOR_NAME} and {JSART_GENERATOR_NAME}/{JSLE_A_GENERATOR_NAME}/{JSLE_B_GENERATOR_NAME}/{JSLE_C_GENERATOR_NAME}",
     type=str,
     choices=DIVERSITY_STRATEGY_NAMES,
     default=SEQUENCE_DIVERSITY_STRATEGY_NAME,
@@ -167,6 +170,9 @@ if __name__ == "__main__":
                 or generator_name == SIMIDF_GENERATOR_NAME
                 or generator_name == TFIDF_GENERATOR_NAME
                 or generator_name == JSART_GENERATOR_NAME
+                or generator_name == JSLE_A_GENERATOR_NAME
+                or generator_name == JSLE_B_GENERATOR_NAME
+                or generator_name == JSLE_C_GENERATOR_NAME
             ):
                 assert (
                     data["num_candidates"] == num_candidates
@@ -176,7 +182,7 @@ if __name__ == "__main__":
                     data["diversity_strategy"] == diversity_strategy
                 ), "Diversity strategy is different from previous execution"  # 验证多样性策略一致
 
-                if generator_name == QGRAMS_GENERATOR_NAME or generator_name == JSART_GENERATOR_NAME:
+                if generator_name == QGRAMS_GENERATOR_NAME or generator_name == JSART_GENERATOR_NAME or generator_name == JSLE_A_GENERATOR_NAME or generator_name == JSLE_B_GENERATOR_NAME or generator_name == JSLE_C_GENERATOR_NAME:
                     assert (
                         data["q"] == q
                     ), "Number of qgrams is different from previous execution"  # 验证Q-gram参数一致
@@ -252,9 +258,12 @@ if __name__ == "__main__":
         or generator_name == SIMIDF_GENERATOR_NAME
         or generator_name == TFIDF_GENERATOR_NAME
         or generator_name == JSART_GENERATOR_NAME
+        or generator_name == JSLE_A_GENERATOR_NAME
+        or generator_name == JSLE_B_GENERATOR_NAME
+        or generator_name == JSLE_C_GENERATOR_NAME
     ):
         assert num_candidates > 0, "Number of candidates should be positive"  # 候选数量必须为正数
-    if generator_name == QGRAMS_GENERATOR_NAME or generator_name == JSART_GENERATOR_NAME:
+    if generator_name == QGRAMS_GENERATOR_NAME or generator_name == JSART_GENERATOR_NAME or generator_name == JSLE_A_GENERATOR_NAME or generator_name == JSLE_B_GENERATOR_NAME or generator_name == JSLE_C_GENERATOR_NAME:
         assert q > 0, "Number of qgrams should be positive"  # Q-gram参数必须为正数
 
     executor = Executor.load_executor(app_name=app_name)  # 加载执行器
@@ -498,10 +507,13 @@ if __name__ == "__main__":
             or generator_name == SIMIDF_GENERATOR_NAME
             or generator_name == TFIDF_GENERATOR_NAME
             or generator_name == JSART_GENERATOR_NAME
+            or generator_name == JSLE_A_GENERATOR_NAME
+            or generator_name == JSLE_B_GENERATOR_NAME
+            or generator_name == JSLE_C_GENERATOR_NAME
         ):
             result_json["num_candidates"] = num_candidates
             result_json["diversity_strategy"] = diversity_strategy
-            if generator_name == QGRAMS_GENERATOR_NAME or generator_name == JSART_GENERATOR_NAME:
+            if generator_name == QGRAMS_GENERATOR_NAME or generator_name == JSART_GENERATOR_NAME or generator_name == JSLE_A_GENERATOR_NAME or generator_name == JSLE_B_GENERATOR_NAME or generator_name == JSLE_C_GENERATOR_NAME:
                 result_json["q"] = q
         result_json["app_name"] = app_name
         result_json["budget"] = budget
@@ -526,6 +538,9 @@ if __name__ == "__main__":
             or generator_name == SIMIDF_GENERATOR_NAME
             or generator_name == TFIDF_GENERATOR_NAME
             or generator_name == JSART_GENERATOR_NAME
+            or generator_name == JSLE_A_GENERATOR_NAME
+            or generator_name == JSLE_B_GENERATOR_NAME
+            or generator_name == JSLE_C_GENERATOR_NAME
         ):
             results_dir = os.path.join(
                 os.getcwd(),
