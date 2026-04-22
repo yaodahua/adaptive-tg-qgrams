@@ -345,9 +345,10 @@ elif [[ $strategy == "jsle_c" ]]; then
 elif [[ $strategy == "jsle_all" ]]; then #jsle_a, jsle_b, jsle_c 都运行
     for i in $(seq 1 $num_repetitions); do
         run_jsle $app_name $i $budget jsle_a sequence $resume_filepath
+        run_jsle $app_name $i $budget jsle_a input $resume_filepath
+    for i in $(seq 1 $num_repetitions); do
         run_jsle $app_name $i $budget jsle_b sequence $resume_filepath
         run_jsle $app_name $i $budget jsle_c sequence $resume_filepath
-        run_jsle $app_name $i $budget jsle_a input $resume_filepath
         run_jsle $app_name $i $budget jsle_b input $resume_filepath
         run_jsle $app_name $i $budget jsle_c input $resume_filepath
     done
