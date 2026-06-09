@@ -142,7 +142,12 @@ bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120
 
 #快速运行所有jsart策略
 bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy jsart_all
+`
+#快速运行所有jsw策略
+bash -i run_experiments.sh --app-name dimeshift --num-repetitions 1 --budget 120 --strategy jsw_all
 ```
+
+
 
 这个测试只运行2分钟，使用随机策略，适合快速验证环境。
 

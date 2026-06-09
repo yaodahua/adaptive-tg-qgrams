@@ -23,6 +23,7 @@ from config import (
     DISTANCE_GENERATOR_NAME,
     GENERATOR_NAMES,
     JSART_GENERATOR_NAME,
+    JSW_GENERATOR_NAME,
     JSLE_A_GENERATOR_NAME,
     JSLE_B_GENERATOR_NAME,
     JSLE_C_GENERATOR_NAME,
@@ -490,6 +491,14 @@ class TestCaseGenerator(ABC):
                         q=q,
                     )
                 if generator_name == JSART_GENERATOR_NAME:
+                    return cls(
+                        app_name=app_name,
+                        class_variable_name=class_variable_name,
+                        num_candidates=num_candidates,
+                        diversity_strategy=diversity_strategy,
+                        q=q,
+                    )
+                if generator_name == JSW_GENERATOR_NAME:
                     return cls(
                         app_name=app_name,
                         class_variable_name=class_variable_name,
